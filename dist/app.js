@@ -13,7 +13,13 @@ var _cors = _interopRequireDefault(require("cors"));
 
 var _morgan = _interopRequireDefault(require("morgan"));
 
+var _ingresantesRoutes = _interopRequireDefault(require("./routes/ingresantesRoutes"));
+
 var _inscriptosRoutes = _interopRequireDefault(require("./routes/inscriptosRoutes"));
+
+var _egresadosRoutes = _interopRequireDefault(require("./routes/egresadosRoutes"));
+
+var _alumnosRoutes = _interopRequireDefault(require("./routes/alumnosRoutes"));
 
 //
 var app = (0, _express["default"])(); //
@@ -24,6 +30,9 @@ app.use((0, _morgan["default"])('dev'));
 app.use((0, _cors["default"])());
 app.use(_express["default"].json()); //
 
-app.use('/dbingreso', _inscriptosRoutes["default"]);
+app.use('/dbingreso', _ingresantesRoutes["default"]);
+app.use('/dbinscriptos', _inscriptosRoutes["default"]);
+app.use('/egresados', _egresadosRoutes["default"]);
+app.use('/alutivos', _alumnosRoutes["default"]);
 var _default = app;
 exports["default"] = _default;

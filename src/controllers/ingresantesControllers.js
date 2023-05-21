@@ -1,5 +1,63 @@
 import coneccionDB from "../database";
 
+//total ingreso por año
+
+
+const countIngresantes = async (anio) => {
+
+    try {
+
+        let sqry = `select count(*) as canti  from negocio.sga_propuestas_aspira spa
+        inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+        where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null 
+        `
+
+        let resultado = await coneccionDB.query(sqry)
+        return resultado
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+
+
+//insgresos total anio
+export const getIngresantesTotal = async (req, res) => {
+    const { anio } = req.params
+    try {
+        const resu = await countIngresantes(anio)
+        //console.log(resu)
+        res.send(resu.rows[0])
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//ingresos entra años
+export const getIngresosTanios = async (req, res) => {
+    const { anioi, aniof } = req.params
+    let aniototal = []
+    try {
+
+        for (let i = Number(anioi); i < Number(aniof) + 1; i++) {
+
+            let totalI = await countIngresantes(i)
+            let objti = { anio: i, total: totalI.rows[0] }
+
+            aniototal.push(objti)
+
+        }
+        res.send(aniototal)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+
+
+
 //total por anio ubicacion
 export const getIngresantesAnioUbi = async (req, res) => {
 
@@ -56,6 +114,26 @@ export const getIngresantesAnioSedePropuesta = async (req, res) => {
 
 
 
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+
+}
+
+
+//ingresantes sede propuesta carrera anio tipoi=1 o 6
+export const getIngresantesAnioSedePropTing = async (req, res) => {
+
+    const { sede, carrera, anio, tipoI } = req.params
+    let sqlstr = `select count(sa.alumno) as canti  from negocio.sga_propuestas_aspira spa 
+    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+    where  sa.ubicacion=${sede} and anio_academico =${anio} and spa.propuesta= ${carrera}
+    and spa.tipo_ingreso=${tipoI} and situacion_asp in (1,2) and not sa.legajo is null `
+    // console.warn(sqlstr)
     try {
         const resu = await coneccionDB.query(sqlstr)
         res.send(resu.rows)

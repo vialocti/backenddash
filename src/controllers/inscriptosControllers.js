@@ -1,29 +1,90 @@
 import coneccionDB from "../database";
 
+const countInscriptos = async (anio) => {
+
+    try {
+        let sqlqy = `SELECT COUNT(*)as catidad FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8)`
+        let resultado = await coneccionDB.query(sqlqy)
+        return resultado
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+
 
 //inscriptos total anio
 export const getInscriptosTotal = async (req, res) => {
     const { anio } = req.params
-    const resu = await coneccionDB.query(`SELECT COUNT(*)as catidad FROM negocio.sga_propuestas_aspira where anio_academico=${anio}`)
-    res.send(resu.rows[0])
+    try {
+        const resu = await countInscriptos(anio)
+        //console.log(resu)
+        res.send(resu.rows[0])
+    } catch (error) {
+        console.log(error)
+    }
 }
+
+
+
+// total inscriptos entre años
+export const getInscriptosTanios = async (req, res) => {
+    const { anioi, aniof } = req.params
+    let aniototal = []
+    try {
+
+        for (let i = Number(anioi); i < Number(aniof) + 1; i++) {
+
+            let totalI = await countInscriptos(i)
+            let objti = { anio: i, total: totalI.rows[0] }
+
+            aniototal.push(objti)
+
+        }
+        res.send(aniototal)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
 
 // total por año carrera sede
 export const getInscriptosPorPropuestaSede = async (req, res) => {
     const { anio, sede, propuesta } = req.params
+
     const strq = `SELECT COUNT(*)as nro FROM negocio.sga_propuestas_aspira where anio_academico=${anio} AND ubicacion=${sede} AND propuesta=${propuesta}`
-    const resu = await coneccionDB.query(strq)
-    res.send(resu.rows[0])
+    try {
+        const resu = await coneccionDB.query(strq)
+        res.send(resu.rows[0])
+    } catch (error) {
+        console.log(error)
+    }
 }
 
-//total propuesta por año sede y carrera agrupados 
+//total propuesta por año sede y carrera agrupados discrimina tipo ingreso
 
+export const getInscriptosTotalSedeTI = async (req, res) => {
+    const { anio } = req.params
+    try {
+        const resu = await coneccionDB.query(`SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,
+    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera
+    ,tipo_ingreso ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta,tipo_ingreso order by ubicacion,propuesta`)
+        res.send(resu.rows)
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//solo sede carrera
 export const getInscriptosTotalSede = async (req, res) => {
     const { anio } = req.params
 
     const resu = await coneccionDB.query(`SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,
-    CASE propuesta WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera
-    ,tipo_ingreso ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=${anio} Group by ubicacion,propuesta,tipo_ingreso order by ubicacion,propuesta`)
+    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera
+     ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta order by ubicacion,propuesta`)
     res.send(resu.rows)
 }
 

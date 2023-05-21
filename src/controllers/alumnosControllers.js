@@ -51,7 +51,7 @@ export const getAlumnosPorPropuesta = async (req, res) => {
 export const getAlumnosPorUbiPropuesta = async (req, res) => {
 
 
-    let sql = ` select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, 
+    let sqlqy = ` select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, 
     CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
      count(propuesta) from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) 
     group by ubicacion,propuesta order by ubicacion,propuesta`
@@ -59,8 +59,9 @@ export const getAlumnosPorUbiPropuesta = async (req, res) => {
 
 
     try {
-        const resu = await coneccionDB.query(sql)
+        const resu = await coneccionDB.query(sqlqy)
         res.send(resu.rows)
+
     } catch (error) {
 
     }
@@ -89,3 +90,48 @@ export const getReinscriptosUbiProp = async (req, res) => {
         console.log(error)
     }
 }
+
+
+//desgranamiento cohorte reinscriptos por anio de una cohorte
+
+
+const TreinscriptosPorAnioCohorte = async (anioI, sede, carrera, i, tipoI) => {
+
+
+    try {
+        let sqlstr = `select count(*) as reinsc from negocio.sga_reinscripciones where anio_academico=${i} and
+        alumno in (select sa.alumno  from negocio.sga_propuestas_aspira spa 
+        inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+        where anio_academico =${anioI} and spa.propuesta in (${carrera}) and sa.ubicacion=${sede} and spa.tipo_ingreso =${tipoI} 
+        and situacion_asp in (1,2) and not sa.legajo is null 
+        )`
+
+        let resultado = await coneccionDB.query(sqlstr)
+        return resultado
+
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+
+export const getEvolucionCohorte = async (req, res) => {
+
+    const { anioI, sede, carrera, anioFC, tipoI } = req.params
+
+    let aniototal = []
+    try {
+        for (let i = Number(anioI) + 1; i < Number(anioFC) + 1; i++) {
+
+            let totalI = await TreinscriptosPorAnioCohorte(anioI, sede, carrera, i, tipoI)
+            let objti = { anio: i, total: totalI.rows[0] }
+
+            aniototal.push(objti)
+
+        }
+        res.send(aniototal)
+    } catch (error) {
+
+    }
+}  

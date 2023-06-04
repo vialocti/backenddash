@@ -5,7 +5,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getReinscriptosUbiProp = exports.getAlumnosPorUbiPropuesta = exports.getAlumnosPorPropuesta = exports.getAlumnosPerActivos = exports.getAlumnosActivos = void 0;
+exports.getReinscriptosUbiProp = exports.getEvolucionCohorte = exports.getAlumnosPorUbiPropuesta = exports.getAlumnosPorPropuesta = exports.getAlumnosPerActivos = exports.getAlumnosActivos = void 0;
 
 var _regenerator = _interopRequireDefault(require("@babel/runtime/regenerator"));
 
@@ -130,15 +130,15 @@ exports.getAlumnosPorPropuesta = getAlumnosPorPropuesta;
 
 var getAlumnosPorUbiPropuesta = /*#__PURE__*/function () {
   var _ref4 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(req, res) {
-    var sql, resu;
+    var sqlqy, resu;
     return _regenerator["default"].wrap(function _callee4$(_context4) {
       while (1) {
         switch (_context4.prev = _context4.next) {
           case 0:
-            sql = " select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, \n    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,\n     count(propuesta) from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) \n    group by ubicacion,propuesta order by ubicacion,propuesta";
+            sqlqy = " select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, \n    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,\n     count(propuesta) from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) \n    group by ubicacion,propuesta order by ubicacion,propuesta";
             _context4.prev = 1;
             _context4.next = 4;
-            return _database["default"].query(sql);
+            return _database["default"].query(sqlqy);
 
           case 4:
             resu = _context4.sent;
@@ -202,6 +202,100 @@ var getReinscriptosUbiProp = /*#__PURE__*/function () {
   return function getReinscriptosUbiProp(_x9, _x10) {
     return _ref5.apply(this, arguments);
   };
-}();
+}(); //desgranamiento cohorte reinscriptos por anio de una cohorte
+
 
 exports.getReinscriptosUbiProp = getReinscriptosUbiProp;
+
+var TreinscriptosPorAnioCohorte = /*#__PURE__*/function () {
+  var _ref6 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee6(anioI, sede, carrera, i, tipoI) {
+    var sqlstr, resultado;
+    return _regenerator["default"].wrap(function _callee6$(_context6) {
+      while (1) {
+        switch (_context6.prev = _context6.next) {
+          case 0:
+            _context6.prev = 0;
+            sqlstr = "select count(*) as reinsc from negocio.sga_reinscripciones where anio_academico=".concat(i, " and\n        alumno in (select sa.alumno  from negocio.sga_propuestas_aspira spa \n        inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n        where anio_academico =").concat(anioI, " and spa.propuesta in (").concat(carrera, ") and sa.ubicacion=").concat(sede, " and spa.tipo_ingreso =").concat(tipoI, " \n        and situacion_asp in (1,2) and not sa.legajo is null \n        )");
+            _context6.next = 4;
+            return _database["default"].query(sqlstr);
+
+          case 4:
+            resultado = _context6.sent;
+            return _context6.abrupt("return", resultado);
+
+          case 8:
+            _context6.prev = 8;
+            _context6.t0 = _context6["catch"](0);
+            console.log(_context6.t0);
+
+          case 11:
+          case "end":
+            return _context6.stop();
+        }
+      }
+    }, _callee6, null, [[0, 8]]);
+  }));
+
+  return function TreinscriptosPorAnioCohorte(_x11, _x12, _x13, _x14, _x15) {
+    return _ref6.apply(this, arguments);
+  };
+}();
+
+var getEvolucionCohorte = /*#__PURE__*/function () {
+  var _ref7 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(req, res) {
+    var _req$params, anioI, sede, carrera, anioFC, tipoI, aniototal, i, totalI, objti;
+
+    return _regenerator["default"].wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
+            _req$params = req.params, anioI = _req$params.anioI, sede = _req$params.sede, carrera = _req$params.carrera, anioFC = _req$params.anioFC, tipoI = _req$params.tipoI;
+            aniototal = [];
+            _context7.prev = 2;
+            i = Number(anioI) + 1;
+
+          case 4:
+            if (!(i < Number(anioFC) + 1)) {
+              _context7.next = 13;
+              break;
+            }
+
+            _context7.next = 7;
+            return TreinscriptosPorAnioCohorte(anioI, sede, carrera, i, tipoI);
+
+          case 7:
+            totalI = _context7.sent;
+            objti = {
+              anio: i,
+              total: totalI.rows[0]
+            };
+            aniototal.push(objti);
+
+          case 10:
+            i++;
+            _context7.next = 4;
+            break;
+
+          case 13:
+            res.send(aniototal);
+            _context7.next = 18;
+            break;
+
+          case 16:
+            _context7.prev = 16;
+            _context7.t0 = _context7["catch"](2);
+
+          case 18:
+          case "end":
+            return _context7.stop();
+        }
+      }
+    }, _callee7, null, [[2, 16]]);
+  }));
+
+  return function getEvolucionCohorte(_x16, _x17) {
+    return _ref7.apply(this, arguments);
+  };
+}();
+
+exports.getEvolucionCohorte = getEvolucionCohorte;

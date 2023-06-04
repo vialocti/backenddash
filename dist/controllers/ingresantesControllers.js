@@ -5,7 +5,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getIngresosTanios = exports.getIngresantesTotal = exports.getIngresantesAnioUbi = exports.getIngresantesAnioSedePropuestaTI = exports.getIngresantesAnioSedePropuesta = void 0;
+exports.getIngresosTanios = exports.getIngresantesTotal = exports.getIngresantesAnioUbi = exports.getIngresantesAnioSedePropuestaTI = exports.getIngresantesAnioSedePropuesta = exports.getIngresantesAnioSedePropTing = void 0;
 
 var _regenerator = _interopRequireDefault(require("@babel/runtime/regenerator"));
 
@@ -265,6 +265,48 @@ var getIngresantesAnioSedePropuesta = /*#__PURE__*/function () {
   return function getIngresantesAnioSedePropuesta(_x10, _x11) {
     return _ref6.apply(this, arguments);
   };
-}();
+}(); //ingresantes sede propuesta carrera anio tipoi=1 o 6
+
 
 exports.getIngresantesAnioSedePropuesta = getIngresantesAnioSedePropuesta;
+
+var getIngresantesAnioSedePropTing = /*#__PURE__*/function () {
+  var _ref7 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(req, res) {
+    var _req$params2, sede, carrera, anio, tipoI, sqlstr, resu;
+
+    return _regenerator["default"].wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
+            _req$params2 = req.params, sede = _req$params2.sede, carrera = _req$params2.carrera, anio = _req$params2.anio, tipoI = _req$params2.tipoI;
+            sqlstr = "select count(sa.alumno) as canti  from negocio.sga_propuestas_aspira spa \n    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n    where  sa.ubicacion=".concat(sede, " and anio_academico =").concat(anio, " and spa.propuesta= ").concat(carrera, "\n    and spa.tipo_ingreso=").concat(tipoI, " and situacion_asp in (1,2) and not sa.legajo is null "); // console.warn(sqlstr)
+
+            _context7.prev = 2;
+            _context7.next = 5;
+            return _database["default"].query(sqlstr);
+
+          case 5:
+            resu = _context7.sent;
+            res.send(resu.rows);
+            _context7.next = 12;
+            break;
+
+          case 9:
+            _context7.prev = 9;
+            _context7.t0 = _context7["catch"](2);
+            console.log(_context7.t0);
+
+          case 12:
+          case "end":
+            return _context7.stop();
+        }
+      }
+    }, _callee7, null, [[2, 9]]);
+  }));
+
+  return function getIngresantesAnioSedePropTing(_x12, _x13) {
+    return _ref7.apply(this, arguments);
+  };
+}();
+
+exports.getIngresantesAnioSedePropTing = getIngresantesAnioSedePropTing;

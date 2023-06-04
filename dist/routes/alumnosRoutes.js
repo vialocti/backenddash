@@ -15,5 +15,6 @@ router.get('/alumsactper', _alumnosControllers.getAlumnosPerActivos);
 router.get('/alumsactpro', _alumnosControllers.getAlumnosPorPropuesta);
 router.get('/alumsactubipro', _alumnosControllers.getAlumnosPorUbiPropuesta);
 router.get('/reinscriptos/:anio', _alumnosControllers.getReinscriptosUbiProp);
+router.get('/cohorteevol/:anioI/:sede/:carrera/:anioFC/:tipoI', _alumnosControllers.getEvolucionCohorte);
 var _default = router;
 exports["default"] = _default;

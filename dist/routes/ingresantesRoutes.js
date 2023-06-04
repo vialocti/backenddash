@@ -15,5 +15,6 @@ router.get('/ingreTotalTanio/:anioi/:aniof', _ingresantesControllers.getIngresos
 router.get('/ingresantesTotalIngresoAnioUbi/:anio', _ingresantesControllers.getIngresantesAnioUbi);
 router.get('/ingresoPorPropuestaSede/:anio', _ingresantesControllers.getIngresantesAnioSedePropuesta);
 router.get('/ingresoPorPropuestaSedeTI/:anio', _ingresantesControllers.getIngresantesAnioSedePropuestaTI);
+router.get('/ingresantesaspi/:anio/:sede/:carrera/:tipoI', _ingresantesControllers.getIngresantesAnioSedePropTing);
 var _default = router;
 exports["default"] = _default;

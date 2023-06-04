@@ -22,7 +22,7 @@ app.use(express.json())
 //
 app.use('/dbingreso', ingresantesRoutes)
 app.use('/dbinscriptos', inscriptosRoutes)
-app.use('/egresados', egresadosRoutes)
+app.use('/dbegresados', egresadosRoutes)
 app.use('/alutivos', alumnosRoutes)
 export default app
 

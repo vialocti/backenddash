@@ -5,6 +5,7 @@ import ingresantesRoutes from './routes/ingresantesRoutes'
 import inscriptosRoutes from './routes/inscriptosRoutes'
 import egresadosRoutes from './routes/egresadosRoutes'
 import alumnosRoutes from './routes/alumnosRoutes'
+import cursadasRoutes from './routes/cursadasRoutes';
 
 
 //
@@ -24,5 +25,7 @@ app.use('/dbingreso', ingresantesRoutes)
 app.use('/dbinscriptos', inscriptosRoutes)
 app.use('/dbegresados', egresadosRoutes)
 app.use('/alutivos', alumnosRoutes)
+app.use('/cursadas', cursadasRoutes)
+
 export default app
 

@@ -21,6 +21,8 @@ var _egresadosRoutes = _interopRequireDefault(require("./routes/egresadosRoutes"
 
 var _alumnosRoutes = _interopRequireDefault(require("./routes/alumnosRoutes"));
 
+var _cursadasRoutes = _interopRequireDefault(require("./routes/cursadasRoutes"));
+
 //
 var app = (0, _express["default"])(); //
 
@@ -32,7 +34,8 @@ app.use(_express["default"].json()); //
 
 app.use('/dbingreso', _ingresantesRoutes["default"]);
 app.use('/dbinscriptos', _inscriptosRoutes["default"]);
-app.use('/egresados', _egresadosRoutes["default"]);
+app.use('/dbegresados', _egresadosRoutes["default"]);
 app.use('/alutivos', _alumnosRoutes["default"]);
+app.use('/cursadas', _cursadasRoutes["default"]);
 var _default = app;
 exports["default"] = _default;

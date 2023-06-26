@@ -68,6 +68,29 @@ export const getAlumnosPorUbiPropuesta = async (req, res) => {
 
 }
 
+//por ubicacion
+//alumnos por ubicacion - propuesta
+export const getAlumnosPorUbi = async (req, res) => {
+
+
+    let sqlqy = `select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, 
+    count(ubicacion) from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) 
+    group by ubicacion order by ubicacion`
+
+
+
+    try {
+        const resu = await coneccionDB.query(sqlqy)
+        res.send(resu.rows)
+
+    } catch (error) {
+
+    }
+
+}
+
+
+
 //reinscripciones
 
 //cantidad reinscripciones por anio, ubicacion,propuesta
@@ -134,4 +157,6 @@ export const getEvolucionCohorte = async (req, res) => {
     } catch (error) {
 
     }
-}  
+}
+
+

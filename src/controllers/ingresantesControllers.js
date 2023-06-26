@@ -1,19 +1,35 @@
 import coneccionDB from "../database";
 
-//total ingreso por año
 
+//total ingresantes por tipo ingreso
+const countIngresantesTI = async (anio) => {
+
+    let sqry = `select tipo_ingreso, count(tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa
+inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null
+and not tipo_ingreso is null group by tipo_ingreso`
+
+    try {
+        const resu = coneccionDB.query(sqry)
+        return resu
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//total ingreso por año
 
 const countIngresantes = async (anio) => {
 
     try {
 
-        let sqry = `select count(*) as canti  from negocio.sga_propuestas_aspira spa
+        let sqry = `select tipo_ingreso, count(tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa
         inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
-        where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null 
-        `
+        where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and not tipo_ingreso is null and situacion_asp in (1,2) and not sa.legajo is null 
+         group by tipo_ingreso`
 
         let resultado = await coneccionDB.query(sqry)
-        return resultado
+        return resultado.rows
 
     } catch (error) {
         console.log(error)
@@ -26,9 +42,10 @@ const countIngresantes = async (anio) => {
 export const getIngresantesTotal = async (req, res) => {
     const { anio } = req.params
     try {
-        const resu = await countIngresantes(anio)
+
+        const resu = await countIngresantesTI(anio)
         //console.log(resu)
-        res.send(resu.rows[0])
+        res.send(resu.rows)
     } catch (error) {
         console.log(error)
     }
@@ -38,12 +55,14 @@ export const getIngresantesTotal = async (req, res) => {
 export const getIngresosTanios = async (req, res) => {
     const { anioi, aniof } = req.params
     let aniototal = []
+
     try {
 
         for (let i = Number(anioi); i < Number(aniof) + 1; i++) {
 
             let totalI = await countIngresantes(i)
-            let objti = { anio: i, total: totalI.rows[0] }
+
+            let objti = { anio: i, total: totalI }
 
             aniototal.push(objti)
 
@@ -63,10 +82,10 @@ export const getIngresantesAnioUbi = async (req, res) => {
 
     const { anio } = req.params
 
-    let sqlstr = `select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, count(sa.ubicacion) as canti  from negocio.sga_propuestas_aspira spa
+    let sqlstr = `select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, tipo_ingreso, count(spa.tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa
     inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
-    where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null 
-    group by sa.ubicacion`
+    where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not tipo_ingreso is null  and not sa.legajo is null 
+    group by sa.ubicacion,tipo_ingreso`
 
     try {
         const resu = await coneccionDB.query(sqlstr)

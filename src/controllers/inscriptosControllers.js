@@ -1,5 +1,20 @@
 import coneccionDB from "../database";
 
+//discriminado por tipo ingreso
+const countInscriptosPorTI = async (anio) => {
+
+    try {
+        let sqlqy = `SELECT tipo_ingreso,count(tipo_ingreso)as toti  FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8)
+        group by tipo_ingreso `
+        let resultado = await coneccionDB.query(sqlqy)
+        return resultado
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+
 const countInscriptos = async (anio) => {
 
     try {
@@ -48,6 +63,22 @@ export const getInscriptosTanios = async (req, res) => {
     }
 
 }
+
+//total inscriptos por sde anio
+
+export const getInscriptosSedeAnio = async (req, res) => {
+    const { anio } = req.params
+
+    const strq = `SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,
+        count(*)  FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) Group by ubicacion order by ubicacion`
+    try {
+        const resu = await coneccionDB.query(strq)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 
 
 // total por año carrera sede
@@ -138,4 +169,37 @@ export const getIscriptosTipoIngresoSedeSexoCarrera = async (req, res) => {
         console.log(error)
     }
 
+}
+
+
+const traerMinFechaI = async (anio_a) => {
+
+    let sqlstr = `SELECT MIN(fecha_inscripcion) FROM negocio.sga_propuestas_aspira spa 
+    WHERE anio_academico=${anio_a}`
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        return resu
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+export const traerInscriptosPorPeriodos = async (req, res) => {
+
+
+    const { anioI, anioF, dias } = req.params
+
+
+
+    let f_Inicio = traerMinFechaI(anioI)
+
+    let f_Fin = ''
+    let sqlstr = ''
+
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+    } catch (error) {
+        console.log(error)
+    }
 } 

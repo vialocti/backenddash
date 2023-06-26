@@ -9,12 +9,12 @@ exports.config = void 0;
 //remota G3
 
 /*
-export const config ={
-    host:'172.22.160.100',
-    user:'postgres',
-    password:'Cabr-0N.2433',
-    database:'toba_3_3',
-    port:'5433'
+export const config = {
+    host: '200.12.136.75',
+    user: 'postgres',
+    password: 'Cabr-0N.2433',
+    database: 'toba_3_3',
+    port: '5433'
 }
 */
 //localdell

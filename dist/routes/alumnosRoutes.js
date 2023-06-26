@@ -13,6 +13,7 @@ var router = (0, _express.Router)();
 router.get('/alumsact', _alumnosControllers.getAlumnosActivos);
 router.get('/alumsactper', _alumnosControllers.getAlumnosPerActivos);
 router.get('/alumsactpro', _alumnosControllers.getAlumnosPorPropuesta);
+router.get('/alumnosSede', _alumnosControllers.getAlumnosPorUbi);
 router.get('/alumsactubipro', _alumnosControllers.getAlumnosPorUbiPropuesta);
 router.get('/reinscriptos/:anio', _alumnosControllers.getReinscriptosUbiProp);
 router.get('/cohorteevol/:anioI/:sede/:carrera/:anioFC/:tipoI', _alumnosControllers.getEvolucionCohorte);

@@ -107,6 +107,7 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
     inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
     inner join negocio.mdp_personas mp on mp.persona=sco.persona 
     where sa.ubicacion=${sede} and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
+    group by sa.propuesta
     `
 
 
@@ -119,7 +120,7 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
         const resu = await coneccionDB.query(sql)
         res.send(resu.rows)
     } catch (error) {
-
+        console.log(error)
     }
 
 }
@@ -161,7 +162,49 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
         const resu = await coneccionDB.query(sql)
         res.send(resu.rows)
     } catch (error) {
+        console.log(error)
+    }
 
+}
+
+
+export const getEgresadosPromedios = async (req, res) => {
+
+    const { anio, car, lapso } = req.params
+
+    let fecha_i = ''
+    let fecha_f = ''
+    let aniot = Number(anio) + 1
+
+    if (lapso === 'C') {
+
+        fecha_i = `${anio}-01-01`
+        fecha_f = `${aniot}-01-01`
+
+    } else if (lapso === 'L') {
+
+        fecha_i = `${anio}-04-01`
+        fecha_f = `${aniot}-04-01`
+
+    }
+
+
+
+    let sql = `select alu.legajo,concat(per.apellido,', ',per.nombres) as nameC,cer.persona,alu.alumno,certificado,promedio,promedio_sin_aplazos,fecha_egreso,
+(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)) as anio 
+,(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)) as aniop
+,(fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)),'-04-01')) as DATE))/365.0 as tiempo
+ from negocio.sga_certificados_otorg cer 
+  inner join negocio.mdp_personas per on per.persona=cer.persona
+  inner join negocio.sga_alumnos alu on alu.alumno=cer.alumno
+ where fecha_egreso >'${fecha_i}' and fecha_egreso <'${fecha_f}' and certificado=${car}
+`
+    try {
+        const wer = await coneccionDB.query('set search_path=negocio')
+        const resp = await coneccionDB.query(sql)
+        res.send(resp.rows)
+    } catch (error) {
+        console.log(error)
     }
 
 }

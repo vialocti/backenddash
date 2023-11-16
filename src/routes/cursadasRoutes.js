@@ -1,11 +1,16 @@
 import { Router } from 'express'
-import { getComisionesAnio, getComisionesSedePL, getListComisionesAnio } from '../controllers/cursadasControllers'
+import { getComisionesAnio, getComisionesCantiInscriptos, getComisionesCantiInscriptosPlan, getComisionesSedePL, getListComisionesAnio, getPeriodosLectivosAnio, resultadoActaDetallesporComision, resultadoActaDetallesporPeriodo } from '../controllers/cursadasControllers'
 
 const router = Router()
+router.get('/periodoslectivos/:anio', getPeriodosLectivosAnio)//periodos lectivos
+router.get('/listcomisionesanio/:anio', getListComisionesAnio)//listado comisiones
+router.get('/comisionesanio/:anio', getComisionesAnio)//cantidad de comisiones por sede
+router.get('/comisionesperlect/:anio', getComisionesSedePL) //cantidad de comisiones por sede periodo
 
-router.get('/liscomisionesanio/:anio', getListComisionesAnio)
-router.get('/comisionesanio/:anio', getComisionesAnio)
-router.get('/comisionesperlect/:anio', getComisionesSedePL)
+router.get('/cantiInsccomisiones/:anio', getComisionesCantiInscriptos)
+router.get('/cantiinscriptosComiplan/:anio',getComisionesCantiInscriptosPlan)
+router.get('/detalleactasCur/:anio/:origen/:periodo',resultadoActaDetallesporPeriodo)
+router.get('/detalleporcomision/:anio/:ncomision',resultadoActaDetallesporComision)
 
 
 export default router

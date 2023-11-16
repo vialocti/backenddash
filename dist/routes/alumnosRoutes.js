@@ -10,7 +10,10 @@ var _express = require("express");
 var _alumnosControllers = require("../controllers/alumnosControllers");
 
 var router = (0, _express.Router)();
-router.get('/alumsact', _alumnosControllers.getAlumnosActivos);
+router.get('/alumsact', _alumnosControllers.getAlumnosActivos); //alumnos activos
+
+router.get('/planesversion', _alumnosControllers.getPlanesVersionActivos); //alumnos
+
 router.get('/alumsactper', _alumnosControllers.getAlumnosPerActivos);
 router.get('/alumsactpro', _alumnosControllers.getAlumnosPorPropuesta);
 router.get('/alumnosSede', _alumnosControllers.getAlumnosPorUbi);

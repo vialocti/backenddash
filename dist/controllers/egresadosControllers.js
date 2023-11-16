@@ -5,7 +5,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getListadoEgreSedeCarreraAnio = exports.getEgresadosPromedios = exports.getEgresadoSedeCarreraAnio = exports.getCantidadEgreSedesAnio = exports.getCantidadEgreSedeCarreraAnio = void 0;
+exports.getListadoEgreSedeCarreraAnio = exports.getEgresadosPromedios = exports.getEgresadoSedeCarreraAnio = exports.getCantidadEgreSedesAnio = exports.getCantidadEgreSedeCarreraAnio = exports.cantidadEresadosaniosPropuesta = void 0;
 
 var _regenerator = _interopRequireDefault(require("@babel/runtime/regenerator"));
 
@@ -13,6 +13,7 @@ var _asyncToGenerator2 = _interopRequireDefault(require("@babel/runtime/helpers/
 
 var _database = _interopRequireDefault(require("../database"));
 
+//promedio por carrera anio
 var getEgresadoSedeCarreraAnio = /*#__PURE__*/function () {
   var _ref = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee(req, res) {
     var _req$params, anio, lapso, fecha_i, fecha_f, aniot, sql_1, sql_I, sql_w, sql_g, sql, resu;
@@ -65,7 +66,8 @@ var getEgresadoSedeCarreraAnio = /*#__PURE__*/function () {
   return function getEgresadoSedeCarreraAnio(_x, _x2) {
     return _ref.apply(this, arguments);
   };
-}();
+}(); //listado carrera sede anio
+
 
 exports.getEgresadoSedeCarreraAnio = getEgresadoSedeCarreraAnio;
 
@@ -227,13 +229,83 @@ exports.getCantidadEgreSedesAnio = getCantidadEgreSedesAnio;
 
 var getEgresadosPromedios = /*#__PURE__*/function () {
   var _ref5 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee5(req, res) {
-    var _req$params5, anio, car, lapso, fecha_i, fecha_f, aniot, sql, wer, resp;
+    var _req$params5, anio, car, lapso, ficola, ffcola, fecha_i, fecha_f, aniot, car_q, sql, wer, resp;
 
     return _regenerator["default"].wrap(function _callee5$(_context5) {
       while (1) {
         switch (_context5.prev = _context5.next) {
           case 0:
-            _req$params5 = req.params, anio = _req$params5.anio, car = _req$params5.car, lapso = _req$params5.lapso;
+            console.log('aaa');
+            _req$params5 = req.params, anio = _req$params5.anio, car = _req$params5.car, lapso = _req$params5.lapso, ficola = _req$params5.ficola, ffcola = _req$params5.ffcola;
+            fecha_i = '';
+            fecha_f = '';
+            aniot = Number(anio) + 1;
+
+            if (ficola === '0' && ffcola === '0') {
+              if (lapso === 'C') {
+                fecha_i = "".concat(anio, "-01-01");
+                fecha_f = "".concat(aniot, "-01-01");
+              } else if (lapso === 'L') {
+                fecha_i = "".concat(anio, "-04-01");
+                fecha_f = "".concat(aniot, "-04-01");
+              }
+            } else {
+              fecha_i = ficola;
+              fecha_f = ffcola;
+            }
+
+            car_q = '';
+
+            if (car === 'T') {
+              car_q = '3,4,5,6,7,8';
+            } else {
+              car_q = car;
+            }
+
+            sql = "select alu.legajo,concat(per.apellido,', ',per.nombres) as nameC,cer.persona,alu.alumno,\n    case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta,\n    round(promedio,2) as promedio,round(promedio_sin_aplazos,2) as promesa,to_char(fecha_egreso,'dd-mm-yyyy') as fecha_egreso,\n    (select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)) as anio \n   ,(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)) as aniop\n   , round((fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)),'-04-01')) as DATE))/365.0, 2) as tiempo\n   from negocio.sga_certificados_otorg cer \n   inner join negocio.mdp_personas per on per.persona=cer.persona\n   inner join negocio.sga_alumnos alu on alu.alumno=cer.alumno\n  where fecha_egreso >'".concat(fecha_i, "' and fecha_egreso <'").concat(fecha_f, "' and certificado in (").concat(car_q, ")\n  order by certificado,nameC,fecha_egreso\n");
+            _context5.prev = 9;
+            _context5.next = 12;
+            return _database["default"].query('set search_path=negocio');
+
+          case 12:
+            wer = _context5.sent;
+            _context5.next = 15;
+            return _database["default"].query(sql);
+
+          case 15:
+            resp = _context5.sent;
+            res.send(resp.rows);
+            _context5.next = 22;
+            break;
+
+          case 19:
+            _context5.prev = 19;
+            _context5.t0 = _context5["catch"](9);
+            console.log(_context5.t0);
+
+          case 22:
+          case "end":
+            return _context5.stop();
+        }
+      }
+    }, _callee5, null, [[9, 19]]);
+  }));
+
+  return function getEgresadosPromedios(_x9, _x10) {
+    return _ref5.apply(this, arguments);
+  };
+}(); //devuelve cantidad de egresados discriminados por certificado
+
+
+exports.getEgresadosPromedios = getEgresadosPromedios;
+
+var cantidadEgrAnioPropuestas = /*#__PURE__*/function () {
+  var _ref6 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee6(anio, lapso) {
+    var fecha_i, fecha_f, aniot, sqlstr, resp;
+    return _regenerator["default"].wrap(function _callee6$(_context6) {
+      while (1) {
+        switch (_context6.prev = _context6.next) {
+          case 0:
             fecha_i = '';
             fecha_f = '';
             aniot = Number(anio) + 1;
@@ -245,39 +317,164 @@ var getEgresadosPromedios = /*#__PURE__*/function () {
               fecha_i = "".concat(anio, "-04-01");
               fecha_f = "".concat(aniot, "-04-01");
             }
+            /*
+             let sqlstr = `select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta, count(certificado)
+             from negocio.sga_certificados_otorg where fecha_egreso >='${fecha_i}' and fecha_egreso<='${fecha_f}' group by certificado
+             `
+            */
 
-            sql = "select alu.legajo,concat(per.apellido,', ',per.nombres) as nameC,cer.persona,alu.alumno,certificado,promedio,promedio_sin_aplazos,fecha_egreso,\n(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)) as anio \n,(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)) as aniop\n,(fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)),'-04-01')) as DATE))/365.0 as tiempo\n from negocio.sga_certificados_otorg cer \n  inner join negocio.mdp_personas per on per.persona=cer.persona\n  inner join negocio.sga_alumnos alu on alu.alumno=cer.alumno\n where fecha_egreso >'".concat(fecha_i, "' and fecha_egreso <'").concat(fecha_f, "' and certificado=").concat(car, "\n");
-            _context5.prev = 6;
-            _context5.next = 9;
-            return _database["default"].query('set search_path=negocio');
 
-          case 9:
-            wer = _context5.sent;
-            _context5.next = 12;
-            return _database["default"].query(sql);
+            sqlstr = "select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta, count(certificado)\n    , sexo from negocio.sga_certificados_otorg cert\n    inner join negocio.mdp_personas mp on mp.persona=cert.persona\n    where fecha_egreso >='".concat(fecha_i, "' and fecha_egreso<='").concat(fecha_f, "' \n    group by certificado,sexo\n    ");
+            _context6.prev = 5;
+            _context6.next = 8;
+            return _database["default"].query(sqlstr);
+
+          case 8:
+            resp = _context6.sent;
+            return _context6.abrupt("return", resp.rows);
 
           case 12:
-            resp = _context5.sent;
-            res.send(resp.rows);
-            _context5.next = 19;
-            break;
+            _context6.prev = 12;
+            _context6.t0 = _context6["catch"](5);
+            console.log(_context6.t0);
 
-          case 16:
-            _context5.prev = 16;
-            _context5.t0 = _context5["catch"](6);
-            console.log(_context5.t0);
-
-          case 19:
+          case 15:
           case "end":
-            return _context5.stop();
+            return _context6.stop();
         }
       }
-    }, _callee5, null, [[6, 16]]);
+    }, _callee6, null, [[5, 12]]);
   }));
 
-  return function getEgresadosPromedios(_x9, _x10) {
-    return _ref5.apply(this, arguments);
+  return function cantidadEgrAnioPropuestas(_x11, _x12) {
+    return _ref6.apply(this, arguments);
+  };
+}(); //lectura de egresados entre años por carrera
+
+
+var cantidadEresadosaniosPropuesta = /*#__PURE__*/function () {
+  var _ref7 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(req, res) {
+    var _req$params6, anioI, anioF, lapso, resu, i, datos, resuanio;
+
+    return _regenerator["default"].wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
+            _req$params6 = req.params, anioI = _req$params6.anioI, anioF = _req$params6.anioF, lapso = _req$params6.lapso;
+            resu = [];
+            i = Number(anioI);
+
+          case 3:
+            if (!(i < Number(anioF) + 1)) {
+              _context7.next = 25;
+              break;
+            }
+
+            datos = {
+              anio: 0,
+              cpnm: 0,
+              lam: 0,
+              lem: 0,
+              llom: 0,
+              lnrgm: 0,
+              cpm: 0,
+              cpnf: 0,
+              laf: 0,
+              lef: 0,
+              llof: 0,
+              lnrgf: 0,
+              cpf: 0
+            };
+            _context7.next = 7;
+            return cantidadEgrAnioPropuestas(i, lapso);
+
+          case 7:
+            resuanio = _context7.sent;
+            //console.log(resuanio)
+            //console.log(resuanio.filter(anior => anior.propuesta === 'LLO'))
+            //console.log(resuanio.filter(anior => anior.propuesta === 'CPN').length, Number(resuanio.filter(anior => anior.propuesta === 'CPN')[0].count))
+            datos.anio = i;
+            datos.cpnm = resuanio.filter(function (anior) {
+              return anior.propuesta === 'CPN' && anior.sexo === 'M';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'CPN' && anior.sexo === 'M';
+            })[0].count) : 0;
+            datos.lam = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LA' && anior.sexo === 'M';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LA' && anior.sexo === 'M';
+            })[0].count) : 0;
+            datos.lem = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LE' && anior.sexo === 'M';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LE' && anior.sexo === 'M';
+            })[0].count) : 0;
+            datos.lnrgm = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LNRG' && anior.sexo === 'M';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LNRG' && anior.sexo === 'M';
+            })[0].count) : 0;
+            datos.llom = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LLO' && anior.sexo === 'M';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LLO' && anior.sexo === 'M';
+            })[0].count) : 0;
+            datos.cpm = resuanio.filter(function (anior) {
+              return anior.propuesta === 'CP' && anior.sexo === 'M';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'CP' && anior.sexo === 'M';
+            })[0].count) : 0;
+            datos.cpnf = resuanio.filter(function (anior) {
+              return anior.propuesta === 'CPN' && anior.sexo === 'F';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'CPN' && anior.sexo === 'F';
+            })[0].count) : 0;
+            datos.laf = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LA' && anior.sexo === 'F';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LA' && anior.sexo === 'F';
+            })[0].count) : 0;
+            datos.lef = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LE' && anior.sexo === 'F';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LE' && anior.sexo === 'F';
+            })[0].count) : 0;
+            datos.lnrgf = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LNRG' && anior.sexo === 'F';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LNRG' && anior.sexo === 'F';
+            })[0].count) : 0;
+            datos.llof = resuanio.filter(function (anior) {
+              return anior.propuesta === 'LLO' && anior.sexo === 'F';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'LLO' && anior.sexo === 'F';
+            })[0].count) : 0;
+            datos.cpf = resuanio.filter(function (anior) {
+              return anior.propuesta === 'CP' && anior.sexo === 'F';
+            }).length > 0 ? Number(resuanio.filter(function (anior) {
+              return anior.propuesta === 'CP' && anior.sexo === 'F';
+            })[0].count) : 0;
+            resu.push(datos);
+
+          case 22:
+            i++;
+            _context7.next = 3;
+            break;
+
+          case 25:
+            res.send(resu);
+
+          case 26:
+          case "end":
+            return _context7.stop();
+        }
+      }
+    }, _callee7);
+  }));
+
+  return function cantidadEresadosaniosPropuesta(_x13, _x14) {
+    return _ref7.apply(this, arguments);
   };
 }();
 
-exports.getEgresadosPromedios = getEgresadosPromedios;
+exports.cantidadEresadosaniosPropuesta = cantidadEresadosaniosPropuesta;

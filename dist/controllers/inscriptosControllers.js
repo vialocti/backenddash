@@ -5,7 +5,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.traerInscriptosPorPeriodos = exports.getIscriptosTipoIngresoSedeSexoCarrera = exports.getIscriptosTipoIngresoSedeSexo = exports.getInscriptosTotalSedeTI = exports.getInscriptosTotalSede = exports.getInscriptosTotal = exports.getInscriptosTanios = exports.getInscriptosSedeAnio = exports.getInscriptosPorPropuestaSede = void 0;
+exports.traerInscriptosPorPeriodos = exports.getIscriptosTipoIngresoSedeSexoCarrera = exports.getIscriptosTipoIngresoSedeSexo = exports.getInscriptosTotalSedeTI = exports.getInscriptosTotalSede = exports.getInscriptosTotal = exports.getInscriptosTanios = exports.getInscriptosSedeCarreraTipoSexo = exports.getInscriptosSedeAnio = exports.getInscriptosPorPropuestaSede = exports.getInscriptosPeriodos = void 0;
 
 var _regenerator = _interopRequireDefault(require("@babel/runtime/regenerator"));
 
@@ -56,13 +56,13 @@ var countInscriptos = /*#__PURE__*/function () {
         switch (_context2.prev = _context2.next) {
           case 0:
             _context2.prev = 0;
-            sqlqy = "SELECT COUNT(*)as catidad FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8)");
+            sqlqy = " SELECT tipo_ingreso, count(tipo_ingreso) as canti FROM negocio.sga_propuestas_aspira \n        where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8) and not tipo_ingreso is null group by tipo_ingreso \n      ");
             _context2.next = 4;
             return _database["default"].query(sqlqy);
 
           case 4:
             resultado = _context2.sent;
-            return _context2.abrupt("return", resultado);
+            return _context2.abrupt("return", resultado.rows);
 
           case 8:
             _context2.prev = 8;
@@ -149,7 +149,7 @@ var getInscriptosTanios = /*#__PURE__*/function () {
             totalI = _context4.sent;
             objti = {
               anio: i,
-              total: totalI.rows[0]
+              total: totalI
             };
             aniototal.push(objti);
 
@@ -179,7 +179,7 @@ var getInscriptosTanios = /*#__PURE__*/function () {
   return function getInscriptosTanios(_x5, _x6) {
     return _ref4.apply(this, arguments);
   };
-}(); //total inscriptos por sde anio
+}(); //total inscriptos por sede anio
 
 
 exports.getInscriptosTanios = getInscriptosTanios;
@@ -219,28 +219,27 @@ var getInscriptosSedeAnio = /*#__PURE__*/function () {
   return function getInscriptosSedeAnio(_x7, _x8) {
     return _ref5.apply(this, arguments);
   };
-}(); // total por año carrera sede
+}(); //total inscriptos por peridos de inscripcion
 
 
 exports.getInscriptosSedeAnio = getInscriptosSedeAnio;
 
-var getInscriptosPorPropuestaSede = /*#__PURE__*/function () {
+var getInscriptosPeriodos = /*#__PURE__*/function () {
   var _ref6 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee6(req, res) {
-    var _req$params2, anio, sede, propuesta, strq, resu;
-
+    var anio, strq, resu;
     return _regenerator["default"].wrap(function _callee6$(_context6) {
       while (1) {
         switch (_context6.prev = _context6.next) {
           case 0:
-            _req$params2 = req.params, anio = _req$params2.anio, sede = _req$params2.sede, propuesta = _req$params2.propuesta;
-            strq = "SELECT COUNT(*)as nro FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " AND ubicacion=").concat(sede, " AND propuesta=").concat(propuesta);
+            anio = req.params.anio;
+            strq = "select spa.periodo_insc, to_char(pif.fecha_inicio,'dd-mm-yyyy') as fechai, to_char(pif.fecha_fin,'dd-mm-yyyy')as fechaf , count(spa.periodo_insc)  as canti  from negocio.sga_propuestas_aspira spa  \n    inner join negocio.sga_periodos_inscripcion_fechas pif on pif.periodo_insc=spa.periodo_insc\n    where anio_academico =".concat(anio, "\n    group by spa.periodo_insc,pif.fecha_inicio,pif.fecha_fin order by pif.fecha_inicio");
             _context6.prev = 2;
             _context6.next = 5;
             return _database["default"].query(strq);
 
           case 5:
             resu = _context6.sent;
-            res.send(resu.rows[0]);
+            res.send(resu.rows);
             _context6.next = 12;
             break;
 
@@ -257,8 +256,49 @@ var getInscriptosPorPropuestaSede = /*#__PURE__*/function () {
     }, _callee6, null, [[2, 9]]);
   }));
 
-  return function getInscriptosPorPropuestaSede(_x9, _x10) {
+  return function getInscriptosPeriodos(_x9, _x10) {
     return _ref6.apply(this, arguments);
+  };
+}(); // total por año carrera sede
+
+
+exports.getInscriptosPeriodos = getInscriptosPeriodos;
+
+var getInscriptosPorPropuestaSede = /*#__PURE__*/function () {
+  var _ref7 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(req, res) {
+    var _req$params2, anio, sede, propuesta, strq, resu;
+
+    return _regenerator["default"].wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
+            _req$params2 = req.params, anio = _req$params2.anio, sede = _req$params2.sede, propuesta = _req$params2.propuesta;
+            strq = "SELECT COUNT(*)as nro FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " AND ubicacion=").concat(sede, " AND propuesta=").concat(propuesta);
+            _context7.prev = 2;
+            _context7.next = 5;
+            return _database["default"].query(strq);
+
+          case 5:
+            resu = _context7.sent;
+            res.send(resu.rows[0]);
+            _context7.next = 12;
+            break;
+
+          case 9:
+            _context7.prev = 9;
+            _context7.t0 = _context7["catch"](2);
+            console.log(_context7.t0);
+
+          case 12:
+          case "end":
+            return _context7.stop();
+        }
+      }
+    }, _callee7, null, [[2, 9]]);
+  }));
+
+  return function getInscriptosPorPropuestaSede(_x11, _x12) {
+    return _ref7.apply(this, arguments);
   };
 }(); //total propuesta por año sede y carrera agrupados discrimina tipo ingreso
 
@@ -266,45 +306,6 @@ var getInscriptosPorPropuestaSede = /*#__PURE__*/function () {
 exports.getInscriptosPorPropuestaSede = getInscriptosPorPropuestaSede;
 
 var getInscriptosTotalSedeTI = /*#__PURE__*/function () {
-  var _ref7 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(req, res) {
-    var anio, resu;
-    return _regenerator["default"].wrap(function _callee7$(_context7) {
-      while (1) {
-        switch (_context7.prev = _context7.next) {
-          case 0:
-            anio = req.params.anio;
-            _context7.prev = 1;
-            _context7.next = 4;
-            return _database["default"].query("SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,\n    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera\n    ,tipo_ingreso ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta,tipo_ingreso order by ubicacion,propuesta"));
-
-          case 4:
-            resu = _context7.sent;
-            res.send(resu.rows);
-            _context7.next = 11;
-            break;
-
-          case 8:
-            _context7.prev = 8;
-            _context7.t0 = _context7["catch"](1);
-            console.log(_context7.t0);
-
-          case 11:
-          case "end":
-            return _context7.stop();
-        }
-      }
-    }, _callee7, null, [[1, 8]]);
-  }));
-
-  return function getInscriptosTotalSedeTI(_x11, _x12) {
-    return _ref7.apply(this, arguments);
-  };
-}(); //solo sede carrera
-
-
-exports.getInscriptosTotalSedeTI = getInscriptosTotalSedeTI;
-
-var getInscriptosTotalSede = /*#__PURE__*/function () {
   var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee8(req, res) {
     var anio, resu;
     return _regenerator["default"].wrap(function _callee8$(_context8) {
@@ -312,36 +313,116 @@ var getInscriptosTotalSede = /*#__PURE__*/function () {
         switch (_context8.prev = _context8.next) {
           case 0:
             anio = req.params.anio;
-            _context8.next = 3;
-            return _database["default"].query("SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,\n    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera\n     ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta order by ubicacion,propuesta"));
+            _context8.prev = 1;
+            _context8.next = 4;
+            return _database["default"].query("SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,\n    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera\n    ,tipo_ingreso ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta,tipo_ingreso order by ubicacion,propuesta"));
 
-          case 3:
+          case 4:
             resu = _context8.sent;
             res.send(resu.rows);
+            _context8.next = 11;
+            break;
 
-          case 5:
+          case 8:
+            _context8.prev = 8;
+            _context8.t0 = _context8["catch"](1);
+            console.log(_context8.t0);
+
+          case 11:
           case "end":
             return _context8.stop();
         }
       }
-    }, _callee8);
+    }, _callee8, null, [[1, 8]]);
   }));
 
-  return function getInscriptosTotalSede(_x13, _x14) {
+  return function getInscriptosTotalSedeTI(_x13, _x14) {
     return _ref8.apply(this, arguments);
   };
-}(); // total por sede, sexo, tipo inscripcion
+}(); //solo sede carrera
+
+
+exports.getInscriptosTotalSedeTI = getInscriptosTotalSedeTI;
+
+var getInscriptosTotalSede = /*#__PURE__*/function () {
+  var _ref9 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(req, res) {
+    var anio, resu;
+    return _regenerator["default"].wrap(function _callee9$(_context9) {
+      while (1) {
+        switch (_context9.prev = _context9.next) {
+          case 0:
+            anio = req.params.anio;
+            _context9.next = 3;
+            return _database["default"].query("SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,\n    CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera\n     ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta order by ubicacion,propuesta"));
+
+          case 3:
+            resu = _context9.sent;
+            res.send(resu.rows);
+
+          case 5:
+          case "end":
+            return _context9.stop();
+        }
+      }
+    }, _callee9);
+  }));
+
+  return function getInscriptosTotalSede(_x15, _x16) {
+    return _ref9.apply(this, arguments);
+  };
+}(); //sede,carrera,sexo,tipoi
 
 
 exports.getInscriptosTotalSede = getInscriptosTotalSede;
 
+var getInscriptosSedeCarreraTipoSexo = /*#__PURE__*/function () {
+  var _ref10 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(req, res) {
+    var anio, strqry, resu;
+    return _regenerator["default"].wrap(function _callee10$(_context10) {
+      while (1) {
+        switch (_context10.prev = _context10.next) {
+          case 0:
+            anio = req.params.anio;
+            strqry = "SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,\n     CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera\n     ,mp.sexo,tipo_ingreso ,COUNT(*) as canti FROM negocio.sga_propuestas_aspira spa\n     inner join negocio.mdp_personas mp on mp.persona=spa.persona\n     where anio_academico=".concat(anio, " and propuesta in (1,2,3,6,7,8)\n     Group by ubicacion,propuesta,sexo,tipo_ingreso order by ubicacion,propuesta");
+            _context10.prev = 2;
+            _context10.next = 5;
+            return _database["default"].query(strqry);
+
+          case 5:
+            resu = _context10.sent;
+            //console.warn(resu)
+            res.send(resu.rows);
+            _context10.next = 12;
+            break;
+
+          case 9:
+            _context10.prev = 9;
+            _context10.t0 = _context10["catch"](2);
+            console.log(_context10.t0);
+
+          case 12:
+          case "end":
+            return _context10.stop();
+        }
+      }
+    }, _callee10, null, [[2, 9]]);
+  }));
+
+  return function getInscriptosSedeCarreraTipoSexo(_x17, _x18) {
+    return _ref10.apply(this, arguments);
+  };
+}(); // total por sede, sexo, tipo inscripcion
+
+
+exports.getInscriptosSedeCarreraTipoSexo = getInscriptosSedeCarreraTipoSexo;
+
 var getIscriptosTipoIngresoSedeSexo = /*#__PURE__*/function () {
-  var _ref9 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(req, res) {
+  var _ref11 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(req, res) {
     var _req$params3, anio, sede, tipoI, sexo, tipoIngreso, cabeza, injoin, condi, strquery, resu;
 
-    return _regenerator["default"].wrap(function _callee9$(_context9) {
+    return _regenerator["default"].wrap(function _callee11$(_context11) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context11.prev = _context11.next) {
           case 0:
             _req$params3 = req.params, anio = _req$params3.anio, sede = _req$params3.sede, tipoI = _req$params3.tipoI, sexo = _req$params3.sexo;
             tipoIngreso = '';
@@ -357,31 +438,31 @@ var getIscriptosTipoIngresoSedeSexo = /*#__PURE__*/function () {
             condi = "WHERE anio_academico=".concat(anio, " AND ubicacion=").concat(sede, " AND ").concat(tipoIngreso, " AND per.sexo='").concat(sexo, "'");
             strquery = "".concat(cabeza).concat(injoin).concat(condi);
             console.log(strquery);
-            _context9.prev = 8;
-            _context9.next = 11;
+            _context11.prev = 8;
+            _context11.next = 11;
             return _database["default"].query(strquery);
 
           case 11:
-            resu = _context9.sent;
+            resu = _context11.sent;
             res.send(resu.rows);
-            _context9.next = 18;
+            _context11.next = 18;
             break;
 
           case 15:
-            _context9.prev = 15;
-            _context9.t0 = _context9["catch"](8);
-            console.log(_context9.t0);
+            _context11.prev = 15;
+            _context11.t0 = _context11["catch"](8);
+            console.log(_context11.t0);
 
           case 18:
           case "end":
-            return _context9.stop();
+            return _context11.stop();
         }
       }
-    }, _callee9, null, [[8, 15]]);
+    }, _callee11, null, [[8, 15]]);
   }));
 
-  return function getIscriptosTipoIngresoSedeSexo(_x15, _x16) {
-    return _ref9.apply(this, arguments);
+  return function getIscriptosTipoIngresoSedeSexo(_x19, _x20) {
+    return _ref11.apply(this, arguments);
   };
 }(); // total por sede, sexo, tipo inscripcion
 
@@ -389,12 +470,12 @@ var getIscriptosTipoIngresoSedeSexo = /*#__PURE__*/function () {
 exports.getIscriptosTipoIngresoSedeSexo = getIscriptosTipoIngresoSedeSexo;
 
 var getIscriptosTipoIngresoSedeSexoCarrera = /*#__PURE__*/function () {
-  var _ref10 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(req, res) {
+  var _ref12 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee12(req, res) {
     var _req$params4, anio, sede, tipoI, sexo, carrera, tipoIngreso, cabeza, injoin, condi, strquery, resu;
 
-    return _regenerator["default"].wrap(function _callee10$(_context10) {
+    return _regenerator["default"].wrap(function _callee12$(_context12) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context12.prev = _context12.next) {
           case 0:
             _req$params4 = req.params, anio = _req$params4.anio, sede = _req$params4.sede, tipoI = _req$params4.tipoI, sexo = _req$params4.sexo, carrera = _req$params4.carrera;
             tipoIngreso = '';
@@ -410,106 +491,106 @@ var getIscriptosTipoIngresoSedeSexoCarrera = /*#__PURE__*/function () {
             condi = "WHERE anio_academico=".concat(anio, " AND ubicacion=").concat(sede, " AND ").concat(tipoIngreso, " AND per.sexo='").concat(sexo, "' and propuesta=").concat(carrera);
             strquery = "".concat(cabeza).concat(injoin).concat(condi);
             console.log(strquery);
-            _context10.prev = 8;
-            _context10.next = 11;
+            _context12.prev = 8;
+            _context12.next = 11;
             return _database["default"].query(strquery);
 
           case 11:
-            resu = _context10.sent;
+            resu = _context12.sent;
             res.send(resu.rows);
-            _context10.next = 18;
+            _context12.next = 18;
             break;
 
           case 15:
-            _context10.prev = 15;
-            _context10.t0 = _context10["catch"](8);
-            console.log(_context10.t0);
+            _context12.prev = 15;
+            _context12.t0 = _context12["catch"](8);
+            console.log(_context12.t0);
 
           case 18:
           case "end":
-            return _context10.stop();
+            return _context12.stop();
         }
       }
-    }, _callee10, null, [[8, 15]]);
+    }, _callee12, null, [[8, 15]]);
   }));
 
-  return function getIscriptosTipoIngresoSedeSexoCarrera(_x17, _x18) {
-    return _ref10.apply(this, arguments);
+  return function getIscriptosTipoIngresoSedeSexoCarrera(_x21, _x22) {
+    return _ref12.apply(this, arguments);
   };
 }();
 
 exports.getIscriptosTipoIngresoSedeSexoCarrera = getIscriptosTipoIngresoSedeSexoCarrera;
 
 var traerMinFechaI = /*#__PURE__*/function () {
-  var _ref11 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(anio_a) {
+  var _ref13 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(anio_a) {
     var sqlstr, resu;
-    return _regenerator["default"].wrap(function _callee11$(_context11) {
+    return _regenerator["default"].wrap(function _callee13$(_context13) {
       while (1) {
-        switch (_context11.prev = _context11.next) {
+        switch (_context13.prev = _context13.next) {
           case 0:
             sqlstr = "SELECT MIN(fecha_inscripcion) FROM negocio.sga_propuestas_aspira spa \n    WHERE anio_academico=".concat(anio_a);
-            _context11.prev = 1;
-            _context11.next = 4;
+            _context13.prev = 1;
+            _context13.next = 4;
             return _database["default"].query(sqlstr);
 
           case 4:
-            resu = _context11.sent;
-            return _context11.abrupt("return", resu);
+            resu = _context13.sent;
+            return _context13.abrupt("return", resu);
 
           case 8:
-            _context11.prev = 8;
-            _context11.t0 = _context11["catch"](1);
-            console.log(_context11.t0);
+            _context13.prev = 8;
+            _context13.t0 = _context13["catch"](1);
+            console.log(_context13.t0);
 
           case 11:
           case "end":
-            return _context11.stop();
+            return _context13.stop();
         }
       }
-    }, _callee11, null, [[1, 8]]);
+    }, _callee13, null, [[1, 8]]);
   }));
 
-  return function traerMinFechaI(_x19) {
-    return _ref11.apply(this, arguments);
+  return function traerMinFechaI(_x23) {
+    return _ref13.apply(this, arguments);
   };
 }();
 
 var traerInscriptosPorPeriodos = /*#__PURE__*/function () {
-  var _ref12 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee12(req, res) {
+  var _ref14 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee14(req, res) {
     var _req$params5, anioI, anioF, dias, f_Inicio, f_Fin, sqlstr, resu;
 
-    return _regenerator["default"].wrap(function _callee12$(_context12) {
+    return _regenerator["default"].wrap(function _callee14$(_context14) {
       while (1) {
-        switch (_context12.prev = _context12.next) {
+        switch (_context14.prev = _context14.next) {
           case 0:
             _req$params5 = req.params, anioI = _req$params5.anioI, anioF = _req$params5.anioF, dias = _req$params5.dias;
             f_Inicio = traerMinFechaI(anioI);
             f_Fin = '';
             sqlstr = '';
-            _context12.prev = 4;
-            _context12.next = 7;
+            _context14.prev = 4;
+            _context14.next = 7;
             return _database["default"].query(sqlstr);
 
           case 7:
-            resu = _context12.sent;
-            _context12.next = 13;
+            resu = _context14.sent;
+            _context14.next = 13;
             break;
 
           case 10:
-            _context12.prev = 10;
-            _context12.t0 = _context12["catch"](4);
-            console.log(_context12.t0);
+            _context14.prev = 10;
+            _context14.t0 = _context14["catch"](4);
+            console.log(_context14.t0);
 
           case 13:
           case "end":
-            return _context12.stop();
+            return _context14.stop();
         }
       }
-    }, _callee12, null, [[4, 10]]);
+    }, _callee14, null, [[4, 10]]);
   }));
 
-  return function traerInscriptosPorPeriodos(_x20, _x21) {
-    return _ref12.apply(this, arguments);
+  return function traerInscriptosPorPeriodos(_x24, _x25) {
+    return _ref14.apply(this, arguments);
   };
 }();
 

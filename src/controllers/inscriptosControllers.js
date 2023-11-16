@@ -18,9 +18,11 @@ const countInscriptosPorTI = async (anio) => {
 const countInscriptos = async (anio) => {
 
     try {
-        let sqlqy = `SELECT COUNT(*)as catidad FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8)`
+        let sqlqy = ` SELECT tipo_ingreso, count(tipo_ingreso) as canti FROM negocio.sga_propuestas_aspira 
+        where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) and not tipo_ingreso is null group by tipo_ingreso 
+      `
         let resultado = await coneccionDB.query(sqlqy)
-        return resultado
+        return resultado.rows
 
     } catch (error) {
         console.log(error)
@@ -52,7 +54,7 @@ export const getInscriptosTanios = async (req, res) => {
         for (let i = Number(anioi); i < Number(aniof) + 1; i++) {
 
             let totalI = await countInscriptos(i)
-            let objti = { anio: i, total: totalI.rows[0] }
+            let objti = { anio: i, total: totalI }
 
             aniototal.push(objti)
 
@@ -64,7 +66,7 @@ export const getInscriptosTanios = async (req, res) => {
 
 }
 
-//total inscriptos por sde anio
+//total inscriptos por sede anio
 
 export const getInscriptosSedeAnio = async (req, res) => {
     const { anio } = req.params
@@ -78,7 +80,23 @@ export const getInscriptosSedeAnio = async (req, res) => {
         console.log(error)
     }
 }
+//total inscriptos por peridos de inscripcion
 
+export const getInscriptosPeriodos = async (req, res) => {
+
+    const { anio } = req.params
+
+    const strq = `select spa.periodo_insc, to_char(pif.fecha_inicio,'dd-mm-yyyy') as fechai, to_char(pif.fecha_fin,'dd-mm-yyyy')as fechaf , count(spa.periodo_insc)  as canti  from negocio.sga_propuestas_aspira spa  
+    inner join negocio.sga_periodos_inscripcion_fechas pif on pif.periodo_insc=spa.periodo_insc
+    where anio_academico =${anio}
+    group by spa.periodo_insc,pif.fecha_inicio,pif.fecha_fin order by pif.fecha_inicio`
+    try {
+        const resu = await coneccionDB.query(strq)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+}
 
 
 // total por año carrera sede
@@ -118,6 +136,29 @@ export const getInscriptosTotalSede = async (req, res) => {
      ,COUNT(*) as nro FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) Group by ubicacion,propuesta order by ubicacion,propuesta`)
     res.send(resu.rows)
 }
+
+//sede,carrera,sexo,tipoi
+
+export const getInscriptosSedeCarreraTipoSexo = async (req, res) => {
+    const { anio } = req.params
+
+    const strqry = `SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,
+     CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera
+     ,mp.sexo,tipo_ingreso ,COUNT(*) as canti FROM negocio.sga_propuestas_aspira spa
+     inner join negocio.mdp_personas mp on mp.persona=spa.persona
+     where anio_academico=${anio} and propuesta in (1,2,3,6,7,8)
+     Group by ubicacion,propuesta,sexo,tipo_ingreso order by ubicacion,propuesta`
+
+    try {
+        const resu = await coneccionDB.query(strqry)
+        //console.warn(resu)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
 
 // total por sede, sexo, tipo inscripcion
 export const getIscriptosTipoIngresoSedeSexo = async (req, res) => {

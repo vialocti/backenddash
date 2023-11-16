@@ -5,7 +5,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getIngresosTanios = exports.getIngresantesTotal = exports.getIngresantesAnioUbi = exports.getIngresantesAnioSedePropuestaTI = exports.getIngresantesAnioSedePropuesta = exports.getIngresantesAnioSedePropTing = void 0;
+exports.getIngresosTanios = exports.getIngresantesTotal = exports.getIngresantesAnioUbi = exports.getIngresantesAnioSedePropuestaTIsexo = exports.getIngresantesAnioSedePropuesta = exports.getIngresantesAnioSedePropTing = void 0;
 
 var _regenerator = _interopRequireDefault(require("@babel/runtime/regenerator"));
 
@@ -21,7 +21,7 @@ var countIngresantesTI = /*#__PURE__*/function () {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            sqry = "select tipo_ingreso, count(tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa\ninner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \nwhere anio_academico =".concat(anio, " and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null\nand not tipo_ingreso is null group by tipo_ingreso");
+            sqry = "select tipo_ingreso, count(tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa\ninner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \nwhere anio_academico =".concat(anio, " and spa.propuesta in (1,2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null\nand not tipo_ingreso is null group by tipo_ingreso");
             _context.prev = 1;
             resu = _database["default"].query(sqry);
             return _context.abrupt("return", resu);
@@ -53,7 +53,7 @@ var countIngresantes = /*#__PURE__*/function () {
         switch (_context2.prev = _context2.next) {
           case 0:
             _context2.prev = 0;
-            sqry = "select tipo_ingreso, count(tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa\n        inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n        where anio_academico =".concat(anio, " and spa.propuesta in (2,3,6,7,8) and not tipo_ingreso is null and situacion_asp in (1,2) and not sa.legajo is null \n         group by tipo_ingreso");
+            sqry = "select tipo_ingreso, count(tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa\n        inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n        where anio_academico =".concat(anio, " and spa.propuesta in (1,2,3,6,7,8) and not tipo_ingreso is null and situacion_asp in (1,2) and not sa.legajo is null \n         group by tipo_ingreso");
             _context2.next = 4;
             return _database["default"].query(sqry);
 
@@ -189,7 +189,7 @@ var getIngresantesAnioUbi = /*#__PURE__*/function () {
         switch (_context5.prev = _context5.next) {
           case 0:
             anio = req.params.anio;
-            sqlstr = "select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, tipo_ingreso, count(spa.tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa\n    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n    where anio_academico =".concat(anio, " and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not tipo_ingreso is null  and not sa.legajo is null \n    group by sa.ubicacion,tipo_ingreso");
+            sqlstr = "select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, tipo_ingreso, count(spa.tipo_ingreso) as canti  from negocio.sga_propuestas_aspira spa\n    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n    where anio_academico =".concat(anio, " and spa.propuesta in (1,2,3,6,7,8) and situacion_asp in (1,2) and not tipo_ingreso is null  and not sa.legajo is null \n    group by sa.ubicacion,tipo_ingreso");
             _context5.prev = 2;
             _context5.next = 5;
             return _database["default"].query(sqlstr);
@@ -216,12 +216,12 @@ var getIngresantesAnioUbi = /*#__PURE__*/function () {
   return function getIngresantesAnioUbi(_x7, _x8) {
     return _ref5.apply(this, arguments);
   };
-}(); //sede propuesta con tipo Ingreso 
+}(); //sede propuesta con tipo Ingreso y sexo
 
 
 exports.getIngresantesAnioUbi = getIngresantesAnioUbi;
 
-var getIngresantesAnioSedePropuestaTI = /*#__PURE__*/function () {
+var getIngresantesAnioSedePropuestaTIsexo = /*#__PURE__*/function () {
   var _ref6 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee6(req, res) {
     var anio, sqlstr, resu;
     return _regenerator["default"].wrap(function _callee6$(_context6) {
@@ -229,7 +229,7 @@ var getIngresantesAnioSedePropuestaTI = /*#__PURE__*/function () {
         switch (_context6.prev = _context6.next) {
           case 0:
             anio = req.params.anio;
-            sqlstr = "select  CASE sa.propuesta WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera\n     ,CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,spa.tipo_ingreso , count(sa.propuesta) as canti  from negocio.sga_propuestas_aspira spa \n    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n    where anio_academico =".concat(anio, " and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null \n    group by sede,carrera,tipo_ingreso");
+            sqlstr = "select  CASE sa.propuesta WHEN 1 THEN 'CPN' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' WHEN 8 THEN 'CP' END as carrera\n    ,CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,spa.tipo_ingreso ,sexo ,count(sa.propuesta) as canti  from negocio.sga_propuestas_aspira spa \n   inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n   inner join negocio.mdp_personas mp on mp.persona=spa.persona\n   where anio_academico =".concat(anio, " and spa.propuesta in (1,2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null \n   group by sede,carrera,sexo,tipo_ingreso");
             _context6.prev = 2;
             _context6.next = 5;
             return _database["default"].query(sqlstr);
@@ -253,13 +253,13 @@ var getIngresantesAnioSedePropuestaTI = /*#__PURE__*/function () {
     }, _callee6, null, [[2, 9]]);
   }));
 
-  return function getIngresantesAnioSedePropuestaTI(_x9, _x10) {
+  return function getIngresantesAnioSedePropuestaTIsexo(_x9, _x10) {
     return _ref6.apply(this, arguments);
   };
 }(); //sede propuesta sin TI 
 
 
-exports.getIngresantesAnioSedePropuestaTI = getIngresantesAnioSedePropuestaTI;
+exports.getIngresantesAnioSedePropuestaTIsexo = getIngresantesAnioSedePropuestaTIsexo;
 
 var getIngresantesAnioSedePropuesta = /*#__PURE__*/function () {
   var _ref7 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(req, res) {
@@ -269,7 +269,7 @@ var getIngresantesAnioSedePropuesta = /*#__PURE__*/function () {
         switch (_context7.prev = _context7.next) {
           case 0:
             anio = req.params.anio;
-            sqlstr = "select CASE sa.propuesta WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,\n     CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, count(sa.propuesta) as canti  from negocio.sga_propuestas_aspira spa \n    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n    where anio_academico =".concat(anio, " and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null \n    group by sa.ubicacion,sa.propuesta");
+            sqlstr = "select CASE sa.propuesta WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,\n     CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, count(sa.propuesta) as canti  from negocio.sga_propuestas_aspira spa \n    inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta \n    where anio_academico =".concat(anio, " and spa.propuesta in (1,2,3,6,7,8) and situacion_asp in (1,2) and not sa.legajo is null \n    group by sa.ubicacion,sa.propuesta");
             _context7.prev = 2;
             _context7.next = 5;
             return _database["default"].query(sqlstr);

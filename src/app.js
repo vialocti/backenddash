@@ -5,8 +5,8 @@ import ingresantesRoutes from './routes/ingresantesRoutes'
 import inscriptosRoutes from './routes/inscriptosRoutes'
 import egresadosRoutes from './routes/egresadosRoutes'
 import alumnosRoutes from './routes/alumnosRoutes'
-import cursadasRoutes from './routes/cursadasRoutes';
-
+import cursadasRoutes from './routes/cursadasRoutes'
+import examenesRoutes from './routes/examenesRoutes'
 
 //
 const app = express()
@@ -26,6 +26,7 @@ app.use('/dbinscriptos', inscriptosRoutes)
 app.use('/dbegresados', egresadosRoutes)
 app.use('/alutivos', alumnosRoutes)
 app.use('/cursadas', cursadasRoutes)
+app.use('/examenes',examenesRoutes)
 
 export default app
 

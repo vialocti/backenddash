@@ -1,8 +1,35 @@
 import coneccionDB from '../database'
-//cantidad de alumnos activos
+
+/*
+select pv.plan_version, pv.plan,pv.version, pv.nombre,pl.codigo from negocio.sga_planes_versiones pv 
+inner join negocio.sga_planes pl on pl.plan=pv.plan
+where pv.estado in ('A','V') and pl.propuesta in (1,2,3,6,7,8)order by pl.codigo
+
+select ubicacion, sa.propuesta,sa.plan_version,pv.plan,pv.nombre,pl.codigo, count(sa.plan_version) from negocio.sga_alumnos sa 
+inner join negocio.sga_planes_versiones pv on pv.plan_version = sa.plan_version 
+inner join negocio.sga_planes pl on pl.plan=pv.plan
+where not sa.legajo is null and sa.calidad='A' and sa.propuesta in (1,2,3,6,7,8)
+group by ubicacion,sa.propuesta,sa.plan_version,pv.plan,pv.nombre,pl.codigo order by ubicacion, sa.propuesta
+
+
+
+*/
+//planes activos con versiones 
+export const getPlanesVersionActivos = async (req, res) => {
+    let sqlstr = `select pv.plan_version, pv.plan,pv.version, pv.nombre,pl.codigo,pv.estado from negocio.sga_planes_versiones pv 
+    inner join negocio.sga_planes pl on pl.plan=pv.plan
+    where pv.estado in ('A','V') and pl.propuesta in (1,2,3,6,7,8)order by pl.codigo
+    `
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//cantidad de alumnos activos mas de una carrera por persona puede haber 
 export const getAlumnosActivos = async (req, res) => {
-
-
     let sql = "select count(legajo) as canti from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8)"
 
     try {
@@ -13,7 +40,7 @@ export const getAlumnosActivos = async (req, res) => {
     }
 
 }
-//cantidad de alumnos fijos
+//cantidad de alumnos (personas fisicas)
 export const getAlumnosPerActivos = async (req, res) => {
 
 
@@ -29,13 +56,15 @@ export const getAlumnosPerActivos = async (req, res) => {
 }
 
 
-//alumnos por propuestas
+//alumnos por propuestas, ubicacion y sexo
 export const getAlumnosPorPropuesta = async (req, res) => {
 
 
-    let sql = `select CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
-     count(propuesta) from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) 
-     group by propuesta order by propuesta`
+    let sql = `select ubicacion,CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
+    count(propuesta),sexo from negocio.sga_alumnos as alu 
+    inner join negocio.mdp_personas as per on per.persona=alu.persona
+    where not legajo isnull and calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) 
+    group by propuesta,sexo,ubicacion order by ubicacion,propuesta`
 
 
     try {
@@ -47,8 +76,27 @@ export const getAlumnosPorPropuesta = async (req, res) => {
 
 }
 
-//alumnos por ubicacion - propuesta
+//alumnos ubi propuesta y planes versiones por sexo
 export const getAlumnosPorUbiPropuesta = async (req, res) => {
+
+    let sqlqy = `select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede 
+    , sa.propuesta,sa.plan_version,pv.plan,pv.nombre,pl.codigo, count(sa.plan_version),sexo from negocio.sga_alumnos sa 
+    inner join negocio.mdp_personas as per on per.persona = sa.persona
+    inner join negocio.sga_planes_versiones pv on pv.plan_version = sa.plan_version 
+    inner join negocio.sga_planes pl on pl.plan=pv.plan
+    where not sa.legajo is null and sa.calidad='A' and sa.propuesta in (1,2,3,6,7,8)
+    group by ubicacion,sa.propuesta,sa.plan_version,pv.plan,pv.nombre,pl.codigo,sexo order by ubicacion, sa.propuesta`
+    try {
+        const resu = await coneccionDB.query(sqlqy)
+        res.send(resu.rows)
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//alumnos por ubicacion - propuesta
+export const getAlumnosPorUbiPropuestaSVP = async (req, res) => {
 
 
     let sqlqy = ` select CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede, 
@@ -56,14 +104,12 @@ export const getAlumnosPorUbiPropuesta = async (req, res) => {
      count(propuesta) from negocio.sga_alumnos where calidad = 'A' and not legajo isnull and  propuesta in (1,2,3,6,7,8) 
     group by ubicacion,propuesta order by ubicacion,propuesta`
 
-
-
     try {
         const resu = await coneccionDB.query(sqlqy)
         res.send(resu.rows)
 
     } catch (error) {
-
+        console.log(error)
     }
 
 }
@@ -144,6 +190,7 @@ export const getEvolucionCohorte = async (req, res) => {
     const { anioI, sede, carrera, anioFC, tipoI } = req.params
 
     let aniototal = []
+
     try {
         for (let i = Number(anioI) + 1; i < Number(anioFC) + 1; i++) {
 
@@ -155,7 +202,7 @@ export const getEvolucionCohorte = async (req, res) => {
         }
         res.send(aniototal)
     } catch (error) {
-
+        console.log(error)
     }
 }
 

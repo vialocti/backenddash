@@ -7,7 +7,7 @@ import egresadosRoutes from './routes/egresadosRoutes'
 import alumnosRoutes from './routes/alumnosRoutes'
 import cursadasRoutes from './routes/cursadasRoutes'
 import examenesRoutes from './routes/examenesRoutes'
-
+import rendimientoRoutes from './routes/rendimientoRoutes'
 //
 const app = express()
 
@@ -27,6 +27,7 @@ app.use('/dbegresados', egresadosRoutes)
 app.use('/alutivos', alumnosRoutes)
 app.use('/cursadas', cursadasRoutes)
 app.use('/examenes',examenesRoutes)
+app.use('/rendimiento',rendimientoRoutes)
 
 export default app
 

@@ -1,5 +1,6 @@
-import  { Pool } from  'pg'
-import {config} from './configdb'
+import pkg from 'pg';
+const {Pool} = pkg
+import {config} from './configdb.js'
 const coneccionDB = new Pool(config)
 
 

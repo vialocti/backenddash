@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getComisionesAnio, getComisionesCantiInscriptos, getComisionesCantiInscriptosPlan, getComisionesSedePL, getListComisionesAnio, getPeriodosLectivosAnio, resultadoActaDetallesporComision, resultadoActaDetallesporPeriodo } from '../controllers/cursadasControllers'
+import { getComisionesAnio, getComisionesCantiInscriptos, getComisionesCantiInscriptosPlan, getComisionesSedePL, getListComisionesAnio, getPeriodosLectivosAnio, resultadoActaDetallesporComision, resultadoActaDetallesporPeriodo } from '../controllers/cursadasControllers.js'
 
 const router = Router()
 router.get('/periodoslectivos/:anio', getPeriodosLectivosAnio)//periodos lectivos

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getAlumnosInfoSedePropuestaplanversion, getplanesVersion } from '../controllers/rendimientoControllers';
+import { getAlumnosInfoSedePropuestaplanversion, getplanesVersion } from '../controllers/rendimientoControllers.js';
 
 const router = Router()
 

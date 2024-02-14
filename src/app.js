@@ -1,13 +1,13 @@
 import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
-import ingresantesRoutes from './routes/ingresantesRoutes'
-import inscriptosRoutes from './routes/inscriptosRoutes'
-import egresadosRoutes from './routes/egresadosRoutes'
-import alumnosRoutes from './routes/alumnosRoutes'
-import cursadasRoutes from './routes/cursadasRoutes'
-import examenesRoutes from './routes/examenesRoutes'
-import rendimientoRoutes from './routes/rendimientoRoutes'
+import ingresantesRoutes from './routes/ingresantesRoutes.js'
+import inscriptosRoutes from './routes/inscriptosRoutes.js'
+import egresadosRoutes from './routes/egresadosRoutes.js'
+import alumnosRoutes from './routes/alumnosRoutes.js'
+import cursadasRoutes from './routes/cursadasRoutes.js'
+import examenesRoutes from './routes/examenesRoutes.js'
+import rendimientoRoutes from './routes/rendimientoRoutes.js'
 //
 const app = express()
 

@@ -1,4 +1,4 @@
-import coneccionDB from "../database";
+import coneccionDB from "../database.js";
 
 
 //total ingresantes por tipo ingreso

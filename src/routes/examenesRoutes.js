@@ -1,5 +1,5 @@
 import {Router} from 'express'
-import { getActasExamenTotalResu, getMesasExamen, getResultadosPorActa } from '../controllers/examenesControllers'
+import { getActasExamenTotalResu, getMesasExamen, getResultadosPorActa } from '../controllers/examenesControllers.js'
 
 const router = Router()
 

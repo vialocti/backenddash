@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import { getIngresantesAnioSedePropTing, getIngresantesAnioSedePropuesta, getIngresantesAnioSedePropuestaTIsexo, getIngresantesAnioUbi, getIngresantesTotal, getIngresosTanios } from '../controllers/ingresantesControllers'
+import { getIngresantesAnioSedePropTing, getIngresantesAnioSedePropuesta, getIngresantesAnioSedePropuestaTIsexo, 
+    getIngresantesAnioUbi, getIngresantesTotal, getIngresosTanios } from '../controllers/ingresantesControllers.js'
 
 const router = Router()
 

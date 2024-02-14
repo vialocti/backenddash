@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getInscriptosPeriodos, getInscriptosPorPropuestaSede, getInscriptosSedeAnio, getInscriptosSedeCarreraTipoSexo, getInscriptosTanios, getInscriptosTotal, getInscriptosTotalSede, getIscriptosTipoIngresoSedeSexo, getIscriptosTipoIngresoSedeSexoCarrera } from '../controllers/inscriptosControllers'
+import { getInscriptosPeriodos, getInscriptosPorPropuestaSede, getInscriptosSedeAnio, getInscriptosSedeCarreraTipoSexo, getInscriptosTanios, getInscriptosTotal, getInscriptosTotalSede, getIscriptosTipoIngresoSedeSexo, getIscriptosTipoIngresoSedeSexoCarrera } from '../controllers/inscriptosControllers.js'
 
 const router = Router()
 

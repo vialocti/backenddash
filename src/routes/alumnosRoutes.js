@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getAlumnosActivos, getAlumnosPerActivos, getAlumnosPorPropuesta, getAlumnosPorUbi, getAlumnosPorUbiPropuesta, getEvolucionCohorte, getPlanesVersionActivos, getReinscriptosUbiProp } from '../controllers/alumnosControllers'
+import { getAlumnosActivos, getAlumnosPerActivos, getAlumnosPorPropuesta, getAlumnosPorUbi, getAlumnosPorUbiPropuesta, getEvolucionCohorte, getPlanesVersionActivos, getReinscriptosUbiProp } from '../controllers/alumnosControllers.js'
 
 const router = Router()
 

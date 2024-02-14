@@ -1,4 +1,4 @@
-import coneccionDB from '../database'
+import coneccionDB from '../database.js'
 
 //mesas examen anio
 export const getMesasExamen = async (req, res) => {

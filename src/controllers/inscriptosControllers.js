@@ -1,4 +1,4 @@
-import coneccionDB from "../database";
+import coneccionDB from "../database.js";
 
 //discriminado por tipo ingreso
 const countInscriptosPorTI = async (anio) => {

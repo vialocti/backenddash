@@ -1,5 +1,5 @@
 //import { Connection } from 'pg'
-import coneccionDB from '../database'
+import coneccionDB from '../database.js'
 /*
 export const nameFuncion = async (req, res) => {
 

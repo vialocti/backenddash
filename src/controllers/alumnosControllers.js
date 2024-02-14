@@ -1,4 +1,4 @@
-import coneccionDB from '../database'
+import coneccionDB from '../database.js'
 
 /*
 select pv.plan_version, pv.plan,pv.version, pv.nombre,pl.codigo from negocio.sga_planes_versiones pv 

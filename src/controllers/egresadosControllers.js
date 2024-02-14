@@ -1,4 +1,4 @@
-import coneccionDB from '../database'
+import coneccionDB from '../database.js'
 
 
 //promedio por carrera anio

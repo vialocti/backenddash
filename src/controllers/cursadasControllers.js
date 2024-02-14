@@ -178,6 +178,40 @@ export const getActividadCantiInscriptos = async (req, res) => {
 }
 
 
+//cantidad de inscriptos por actividad discriminando comisiones
+//
+
+export const getActividadComisionCantiInscriptos = async (req, res) => {
+
+    const { anio, sede, actividad } = req.params
+
+
+    let sqlstr = `select sc.ubicacion,sc.nombre as ncomi,sic.comision, count(sic.comision) as tot from negocio.sga_insc_cursada sic 
+    inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+    inner join negocio.sga_elementos se on se.elemento = sc.elemento 
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
+    inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
+    inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
+    where sp.anio_academico =${anio} and sc.ubicacion=${sede} and se.nombre='${actividad}' and  not sc.nombre like'V%'
+    
+    group by sc.ubicacion, sc.nombre,sic.comision
+    order by sc.ubicacion, sc.nombre 
+
+`
+
+    try {
+
+
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+
+
 //cantidad de inscriptos por plan - comision
 //--------
 export const getComisionesCantiInscriptosPlan = async (req, res) => {

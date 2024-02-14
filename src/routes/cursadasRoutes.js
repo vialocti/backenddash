@@ -1,5 +1,8 @@
 import { Router } from 'express'
-import { getComisionesAnio, getComisionesCantiInscriptos, getComisionesCantiInscriptosPlan, getComisionesSedePL, getListComisionesAnio, getPeriodosLectivosAnio, resultadoActaDetallesporComision, resultadoActaDetallesporPeriodo } from '../controllers/cursadasControllers.js'
+import { getActividadCantiInscriptos, getActividadComisionCantiInscriptos, getComisionesAnio, 
+    getComisionesCantiInscriptos, getComisionesCantiInscriptosPlan, getComisionesSedePL, 
+    getListComisionesAnio, getPeriodosLectivosAnio, resultadoActaDetallesporComision, 
+    resultadoActaDetallesporPeriodo } from '../controllers/cursadasControllers.js'
 
 const router = Router()
 router.get('/periodoslectivos/:anio', getPeriodosLectivosAnio)//periodos lectivos
@@ -9,6 +12,8 @@ router.get('/comisionesperlect/:anio', getComisionesSedePL) //cantidad de comisi
 
 router.get('/cantiInsccomisiones/:anio', getComisionesCantiInscriptos)
 router.get('/cantiinscriptosComiplan/:anio',getComisionesCantiInscriptosPlan)
+router.get('/cantiInscActividad/:anio/:sede', getActividadCantiInscriptos)
+router.get('/cantiInscActividadComi/:anio/:sede/:actividad', getActividadComisionCantiInscriptos)
 router.get('/detalleactasCur/:anio/:origen/:periodo',resultadoActaDetallesporPeriodo)
 router.get('/detalleporcomision/:anio/:ncomision',resultadoActaDetallesporComision)
 

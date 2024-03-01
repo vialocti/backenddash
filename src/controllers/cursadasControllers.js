@@ -1,5 +1,8 @@
 //import { Connection } from 'pg'
 import coneccionDB from '../database.js'
+import { enviarDatos, traerCantidadporActividad, traerInscriptosSedeAnio } from '../services/cursadas/cursadasServices.js'
+
+
 /*
 export const nameFuncion = async (req, res) => {
 
@@ -53,6 +56,28 @@ export const getListComisionesAnio = async (req, res) => {
     inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
     where sp.anio_academico =${anio} and not sc.nombre like'V%' order by sc.ubicacion, sc.periodo_lectivo `
 
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+//listado de comisiones por materia solo numero de comision
+export const getComisionesAnioMateria = async (req, res) => {
+
+    const { anio, nmateria } = req.params
+
+
+        let sqlstr = `select sc.comision  from negocio.sga_comisiones sc 
+        inner join negocio.sga_elementos se on se.elemento = sc.elemento 
+        inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
+        inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
+        inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
+        where sp.anio_academico =${anio} and se.nombre = '${nmateria}' and not sc.nombre like'V%' order by comision `
+   // console.log(sqlstr)
     try {
         const resu = await coneccionDB.query(sqlstr)
         res.send(resu.rows)
@@ -146,14 +171,16 @@ export const getComisionesCantiInscriptos = async (req, res) => {
     }
 
 }
- ////
-//cantidad de inscriptos por espacio curricular
+ 
+//
+////
+//cantidad de inscriptos por espacio curricular para comparativas
 export const getActividadCantiInscriptos = async (req, res) => {
 
     const { anio, sede } = req.params
 
 
-    let sqlstr = `select sc.ubicacion,se.nombre,sic.comision, count(sic.comision) as tot from negocio.sga_insc_cursada sic 
+    let sqlstr = `select sc.ubicacion,se.nombre, count(sic.comision) as tot from negocio.sga_insc_cursada sic 
     inner join negocio.sga_comisiones sc on sc.comision=sic.comision
     inner join negocio.sga_elementos se on se.elemento = sc.elemento 
     inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
@@ -161,7 +188,7 @@ export const getActividadCantiInscriptos = async (req, res) => {
     inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
     where sp.anio_academico =${anio} and sc.ubicacion=${sede} and not sc.nombre like'V%'
     
-    group by sc.ubicacion, se.nombre,sic.comision
+    group by sc.ubicacion, se.nombre
     order by sc.ubicacion, se.nombre  
 
 `
@@ -176,6 +203,38 @@ export const getActividadCantiInscriptos = async (req, res) => {
     }
 
 }
+////
+//cantidad de inscriptos por espacio curricular
+export const getActividadCantiInscriptosC = async (req, res) => {
+
+    const { anio, sede } = req.params
+
+
+    let sqlstr = `select sc.ubicacion,se.nombre,sc.nombre as comi, count(sic.comision) as tot from negocio.sga_insc_cursada sic 
+    inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+    inner join negocio.sga_elementos se on se.elemento = sc.elemento 
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
+    inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
+    inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
+    where sp.anio_academico =${anio} and sc.ubicacion=${sede} and not sc.nombre like'V%'
+    
+    group by sc.ubicacion, se.nombre,sc.nombre
+    order by sc.ubicacion, se.nombre  
+
+`
+
+    try {
+
+
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+
 
 
 //cantidad de inscriptos por actividad discriminando comisiones
@@ -298,3 +357,116 @@ export const resultadoActaDetallesporComision = async (req, res) => {
 
 }
 
+
+//materias
+export const getListMateriasComision = async (req, res) => {
+
+    const { anio} = req.params
+
+
+        let sqlstr = `select distinct se.nombre  from negocio.sga_comisiones sc 
+        inner join negocio.sga_elementos se on se.elemento = sc.elemento 
+        inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
+        inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
+        inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
+        where sp.anio_academico =${anio} and not sc.nombre like'V%' order by se.nombre `
+
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+
+//detalle de actas regular, promocion por comision(nombre de la comision)
+
+export const resultadoActaDetallesporComisiones = async (req, res) => {
+
+    const {anio,ncomisiones} = req.params
+    
+
+    let sqlstr = `select sc.comision,sc.nombre,sp.nombre as periodo ,sa.origen ,resultado,count(resultado)  from negocio.sga_actas_detalle sad 
+    inner join negocio.sga_actas sa on sa.id_acta =sad.id_acta
+    inner join negocio.sga_comisiones sc on sc.comision=sa.comision 
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+    inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+    where sa.estado='C' and sp.anio_academico =${anio} and sa.origen in('P','R') 
+     and sc.comision in (${ncomisiones}) and rectificado='N'
+    group by  sc.comision,sc.nombre,sp.nombre,sa.origen,sad.resultado
+`
+
+    try {
+        
+        
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+
+    }
+
+}
+
+export const getComparativasInscripcion =async (req,res)=>{
+
+    const {anio, sede} = req.params
+    
+    
+    try {
+
+        
+        let datofila={ubi:1,materia:'',total:0,total1:0,total2:0,total3:0,total4:0}
+        let datosCompara=[]
+
+        const traerdato=async (anioc,actividad)=>{
+           return await traerCantidadporActividad(anioc,sede,actividad)
+        }
+
+            const result = await traerInscriptosSedeAnio(anio,sede)
+            console.log(result)
+            
+            result.forEach(dato =>{  
+                
+                let dresu1=traerdato(anio-1,dato.nombre)
+                let dresu2=traerdato(anio-2,dato.nombre)
+                let dresu3=traerdato(anio-3,dato.nombre)
+                let dresu4=traerdato(anio-4,dato.nombre)
+                if(dresu1.length===1){
+                    datofila.total1=dresu1[0].tot
+                }
+                if(dresu2.length===1){
+                    datofila.total2=dresu2[0].tot
+                }
+                if(dresu3.length===1){
+                    datofila.total3=dresu3[0].tot
+                }
+                if(dresu4.length===1){
+                    datofila.total4=dresu4[0].tot
+                }
+                
+                datofila.ubi=dato.ubicacion
+                datofila.materia=dato.nombre
+                datofila.total=dato.tot
+               
+                //console.log(dato.nombre)
+                //console.log(datofila)
+                //enviarDatos(datofila) 
+                datosCompara.push(datofila)
+                
+                
+              }
+                
+                )
+                setTimeout(()=>res.send(result),2000)
+                
+                
+            
+    } catch (error) {
+        console.log(error)
+    }
+
+
+
+}

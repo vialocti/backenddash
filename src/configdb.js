@@ -6,14 +6,14 @@ export const config = {
     database: 'toba_3_3',
     port: '5433'
 }
-*/
 
+*/
 //localdell
-var config = {
+export const config = {
   host: 'localhost',
   user: 'postgres',
   password: 'cabron-2433',
   database: 'guarani_3_20_3',
   port: '5432'
 };
-exports.config = config;
+

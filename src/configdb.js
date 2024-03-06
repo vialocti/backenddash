@@ -12,7 +12,7 @@ export const config = {
 export const config = {
   host: 'localhost',
   user: 'postgres',
-  password: 'cabron-2433',
+  password: 'cabron.2433',
   database: 'guarani_3_20_3',
   port: '5432'
 };

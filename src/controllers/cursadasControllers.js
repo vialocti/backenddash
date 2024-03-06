@@ -1,6 +1,6 @@
 //import { Connection } from 'pg'
 import coneccionDB from '../database.js'
-import { enviarDatos, traerCantidadporActividad, traerInscriptosSedeAnio } from '../services/cursadas/cursadasServices.js'
+import { enviarDatos, traerCantidadporActividad, traerInscriptosSedeAnio, traerRechazadosBajaActividad } from '../services/cursadas/cursadasServices.js'
 
 
 /*
@@ -413,26 +413,44 @@ export const getComparativasInscripcion =async (req,res)=>{
 
     const {anio, sede} = req.params
     
-    
+  
     try {
-
+         let datosCompara=[]
         
-        let datofila={ubi:1,materia:'',total:0,total1:0,total2:0,total3:0,total4:0}
-        let datosCompara=[]
-
+      
+      
         const traerdato=async (anioc,actividad)=>{
+           
            return await traerCantidadporActividad(anioc,sede,actividad)
         }
 
+        const traerdatoR = async (anioc,sede,actividad)=>{
+           
+            return await traerRechazadosBajaActividad(anioc,sede,actividad)
+         }
+
             const result = await traerInscriptosSedeAnio(anio,sede)
-            console.log(result)
+            //console.log(result)
             
-            result.forEach(dato =>{  
+            result.forEach(async dato=>{  
                 
-                let dresu1=traerdato(anio-1,dato.nombre)
-                let dresu2=traerdato(anio-2,dato.nombre)
-                let dresu3=traerdato(anio-3,dato.nombre)
-                let dresu4=traerdato(anio-4,dato.nombre)
+                let datofila={ubi:1,materia:'',total:0,total1:0,total2:0,total3:0,total4:0,totaR:0,totaR1:0,totaR2:0,totaR3:0,totaR4:0}
+               
+                     
+                //inscriptos anios anteriores
+                let dresu1=await traerdato(anio-1,dato.nombre)
+                let dresu2=await traerdato(anio-2,dato.nombre)
+                let dresu3=await traerdato(anio-3,dato.nombre)
+                let dresu4=await traerdato(anio-4,dato.nombre)
+               
+               
+                //rechazados
+                let dresur1=await traerdatoR(anio-1,sede,dato.nombre)
+                let dresur2=await traerdatoR(anio-2,sede,dato.nombre)
+                let dresur3=await traerdatoR(anio-3,sede,dato.nombre)
+                let dresur4=await traerdatoR(anio-4,sede,dato.nombre)
+                
+               
                 if(dresu1.length===1){
                     datofila.total1=dresu1[0].tot
                 }
@@ -445,21 +463,40 @@ export const getComparativasInscripcion =async (req,res)=>{
                 if(dresu4.length===1){
                     datofila.total4=dresu4[0].tot
                 }
-                
+
+           
+               
+                if(dresur1){
+                    datofila.totaR1=dresur1
+                }
+                if(dresur2){
+                    datofila.totaR2=dresur2
+                }
+                if(dresur3){
+                    datofila.totaR3=dresur3
+                }
+                if(dresur4){
+                    datofila.totaR4=dresur4
+                }
+
+
                 datofila.ubi=dato.ubicacion
                 datofila.materia=dato.nombre
                 datofila.total=dato.tot
-               
-                //console.log(dato.nombre)
-                //console.log(datofila)
+                datofila.totaR= await traerRechazadosBajaActividad(anio,sede,dato.nombre)
+               console.log(datofila)
                 //enviarDatos(datofila) 
-                datosCompara.push(datofila)
+              
                 
-                
+                  datosCompara.push(datofila)
               }
                 
                 )
-                setTimeout(()=>res.send(result),2000)
+                
+             
+                
+                
+                setTimeout(()=>res.send(datosCompara),1000)
                 
                 
             

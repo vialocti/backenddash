@@ -76,5 +76,28 @@ export const getResultadosPorActa = async (req, res) => {
     }
 
 }
+
+
+//si esta aprobado el alumno acta alumno comision
+
+export const getAprobadoActaAlumno = async (req, res) => {
+
+    const {idacta, alumno} = req.params
+    
+
+    let sqlstr = `select count(*) from negocio.sga_actas_detalle sad 
+    where id_acta =${idacta} and alumno=${alumno}
+    group by resultado
+`
+
+    try {
+                
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}
     
 

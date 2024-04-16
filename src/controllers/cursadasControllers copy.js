@@ -1,6 +1,6 @@
 //import { Connection } from 'pg'
 import coneccionDB from '../database.js'
-import { traerCantidadporActividad, traerInscriptosSedeAnio, traerRechazadosBajaActividad, tratarExamenes } from '../services/cursadas/cursadasServices.js'
+import { enviarDatos, traerCantidadporActividad, traerInscriptosSedeAnio, traerRechazadosBajaActividad } from '../services/cursadas/cursadasServices.js'
 
 
 /*
@@ -69,18 +69,17 @@ export const getListComisionesAnio = async (req, res) => {
 export const getComisionesAnioMateria = async (req, res) => {
 
     const { anio, nmateria } = req.params
-   // console.log(anio,nmateria)
-     
+
+
         let sqlstr = `select sc.comision  from negocio.sga_comisiones sc 
         inner join negocio.sga_elementos se on se.elemento = sc.elemento 
         inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
         inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
         inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
         where sp.anio_academico =${anio} and se.nombre = '${nmateria}' and not sc.nombre like'V%' order by comision `
-       //console.log(sqlstr)
+   // console.log(sqlstr)
     try {
         const resu = await coneccionDB.query(sqlstr)
-        //console.log(resu.rows)
         res.send(resu.rows)
     } catch (error) {
         console.log(error)
@@ -494,7 +493,7 @@ const traerDatoPerfomance=(comision,datoscrudos, dis)=>{
 //convertir datos crudos en por comisiones
 
 //comienzo de tratamiento de datos
-export const convertirDatos= async (ncomisiones, datoscrudos)=>{
+const convertirDatos= async (ncomisiones, datoscrudos)=>{
   
     let comitratamiento = ncomisiones.split(',')
     //console.log(datoscrudos)
@@ -563,7 +562,7 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
 
       })
 
-      //console.log(arrayDatos)
+      console.log(arrayDatos)
 
       arrayDatos.forEach(async element=>{
             const datosRectificadas =await traerNrorectificadasPorResultado(element.comision)
@@ -581,11 +580,11 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
             
             } else if(datosRectificadas.length===2){
                 //console.log(datosRectificadas)
-                //console.log(datosRectificadas[0].count)
-                //console.log(datosRectificadas[1].count)
+                console.log(datosRectificadas[0].count)
+                console.log(datosRectificadas[1].count)
 
                 if(datosRectificadas[0].resultado==='R' && datosRectificadas[1].resultado==='U'){   
-                   // console.log('hola')
+                    console.log('hola')
                     element.reprobado= +element.reprobado - datosRectificadas[0].count
                     element.ausente= +element.ausente - datosRectificadas[1].count
                 }else if(datosRectificadas[0].resultado==='A' && datosRectificadas[1].resultado==='R'){
@@ -612,8 +611,8 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
        setTimeout(()=> console.log('Ok'),2000)
        
        
-       //tratarExamenes(arrayDatos)
        return arrayDatos
+     
 
 
       
@@ -629,7 +628,7 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
 
 export const resultadoActaDetallesporComisiones = async (req, res) => {
 
-    const {anio,ncomisiones, codsede} = req.params
+    const {anio,ncomisiones,codsede} = req.params
    // console.log(ncomisiones)
     
 
@@ -639,7 +638,7 @@ export const resultadoActaDetallesporComisiones = async (req, res) => {
     inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
     inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
     where sa.estado='C' and sp.anio_academico =${anio} and sa.origen in('P','R') 
-     and sc.comision in (${ncomisiones}) and sc.nombre like('${codsede}%') and not upper(sc.nombre) like('%RECUR%')
+     and sc.comision in (${ncomisiones}) and 
     group by  sc.comision,sc.nombre,sp.nombre,sa.origen,sa.tipo_acta,sad.resultado
   `
 
@@ -658,15 +657,11 @@ export const resultadoActaDetallesporComisiones = async (req, res) => {
 
 }
 
-
-//comparativa de inscripciones
-//
-
 export const getComparativasInscripcion =async (req,res)=>{
 
     const {anio, sede} = req.params
     
-   //console.log(anio,sede)
+   console.log(anio,sede)
     try {
          let datosCompara=[]
         
@@ -759,31 +754,4 @@ export const getComparativasInscripcion =async (req,res)=>{
 
 
 
-}
-
-
-export const traerDatosHistoricosResultados=async (req,res)=>{
-    
-     const {sede,anios,actividad}=req.params
-     //console.log(actividad,sede,anios)
-    
-    let sql=''
-    if(actividad==='T'){
-
-        sql = `select * from fce_per.dash_actividad_resultados where anio_academico  in (${anios}) and sede='${sede}' order by actividad_nombre`
-    }else{
-    
-    
-        sql = `select * from fce_per.dash_actividad_resultados where anio_academico  in (${anios}) and sede='${sede}' 
-        and actividad_nombre='${actividad}' order by anio_academico` 
-    }
-    console.log(sql)
-    try {
-        
-        const resu =await coneccionDB.query(sql)
-        res.send(resu.rows)
-
-    } catch (error) {
-        console.log(error)
-    }
 }

@@ -114,6 +114,39 @@ export const getAlumnosPorUbiPropuestaSVP = async (req, res) => {
 
 }
 
+//alumnos por ubicacion - propuesta provisorios
+export const getAlumnosPorUbiPropuestaProvisorios = async (req, res) => {
+
+
+    let sqlqy = ` select case ubicacion WHEN 1 THEN 185 WHEN 2 THEN 186 WHEN 3 THEN 2714 WHEN 4 THEN 2970 END as codinst,
+    case propuesta WHEN 8 THEN 450 WHEN 2 THEN 386 WHEN 3 THEN 464 WHEN 6 THEN 8216 WHEN 7 THEN 3905 END as codtit, count(propuesta)  
+    from negocio.sga_alumnos where legajo isnull and calidad='A' and propuesta in (2,3,6,7,8) 
+    group by ubicacion, propuesta order by ubicacion,propuesta`
+    try {
+        const resu = await coneccionDB.query(sqlqy)
+        res.send(resu.rows)
+
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+//alumnos por ubicacion - propuesta provisorios
+export const getAlumnosPorUbiProvisorios = async (req, res) => {
+
+
+    let sqlqy = ` select case ubicacion WHEN 1 THEN 185 WHEN 2 THEN 186 WHEN 3 THEN 2714 WHEN 4 THEN 2970 END as codinst,count(propuesta)  
+    from negocio.sga_alumnos where legajo isnull and calidad='A' and propuesta in (2,3,6,7,8)  group by ubicacion order by ubicacion`
+    try {
+        const resu = await coneccionDB.query(sqlqy)
+        res.send(resu.rows)
+
+    } catch (error) {
+        console.log(error)
+    }
+
+}
 //por ubicacion
 //alumnos por ubicacion - propuesta
 export const getAlumnosPorUbi = async (req, res) => {
@@ -130,9 +163,22 @@ export const getAlumnosPorUbi = async (req, res) => {
         res.send(resu.rows)
 
     } catch (error) {
-
+        console.log(error)
     }
 
+}
+
+export const getAlumnosAnioCursada= async (req, res)=>{
+    let sqlstr=` select ubicacion,case propuesta when 1 then 'CPN' when 2 then 'LA' when 3 then 'LE' when 6 then 'LNRG' when 7 then 'LLO'when 8 then 'CP' end as carerra
+    , case plan when 5 then '98' when 6 then '98' when 7 then '98' when 10 then '1' when 11 then '1' when 12 then '19' when 13 then '19' when 14 then '19' end as planl, aniocursada, count(aniocursada) from fce_per.alumnos_info ai
+    group by ubicacion ,propuesta ,plan,aniocursada order by ubicacion, propuesta,plan,aniocursada `
+
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 

@@ -5,7 +5,8 @@ import { getActividadCantiInscriptos, getActividadCantiInscriptosC, getActividad
     getComparativasInscripcion, 
     getListComisionesAnio, getListMateriasComision, getPeriodosLectivosAnio, resultadoActaDetallesporComision, 
     resultadoActaDetallesporComisiones, 
-    resultadoActaDetallesporPeriodo } from '../controllers/cursadasControllers.js'
+    resultadoActaDetallesporPeriodo, 
+    traerDatosHistoricosResultados} from '../controllers/cursadasControllers.js'
 
 const router = Router()
 router.get('/periodoslectivos/:anio', getPeriodosLectivosAnio)//periodos lectivos
@@ -22,7 +23,9 @@ router.get('/cantiInscActividadComi/:anio/:sede', getActividadCantiInscriptosC)
 router.get('/cantiInscActividadComi/:anio/:sede/:actividad', getActividadComisionCantiInscriptos)
 router.get('/detalleactasCur/:anio/:origen/:periodo',resultadoActaDetallesporPeriodo)
 router.get('/detalleporcomision/:anio/:ncomision',resultadoActaDetallesporComision)
-router.get('/detalleporcomisiones/:anio/:ncomisiones',resultadoActaDetallesporComisiones)
+router.get('/detalleporcomisiones/:anio/:ncomisiones/:codsede',resultadoActaDetallesporComisiones)
+
+router.get('/historicoIndice/:sede/:anios/:actividad', traerDatosHistoricosResultados)
 
 
 router.get('/comparativas/:anio/:sede', getComparativasInscripcion)

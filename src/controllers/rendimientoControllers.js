@@ -29,7 +29,7 @@ export const getAlumnosInfoSedePropuestaplanversion  = async (req, res) => {
     const {ubicacion, propuesta, plan, planversion,anioipro} = req.params
     
 
-    let sqlstr = `select alumno,legajo,ubicacion,propuesta,plan,plan_version ,concat(apellido,', ',nombres) as estudiante ,anio_ingreso_pro ,anio_ingreso_fac ,aprobadas,reprobadas,regularesap ,promedioca, promediosa ,completado  from fce_per.alumnos_info ai 
+    let sqlstr = `select alumno,legajo,ubicacion,propuesta,plan,plan_version ,concat(apellido,', ',nombres) as estudiante ,anio_ingreso_pro ,anio_ingreso_fac ,aprobadas,reprobadas,regularesap ,promedioca, promediosa ,completado,coef_tcarrera,por_relativo  from fce_per.alumnos_info ai 
     where ubicacion=${ubicacion} and propuesta=${propuesta} and plan=${plan} and plan_version =${planversion} and anio_ingreso_pro =${anioipro} order by anio_ingreso_fac 
     `
    console.warn(sqlstr)

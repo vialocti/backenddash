@@ -16,7 +16,7 @@ export const traerInscriptosSedeAnio = async (anio, sede) => {
     where sp.anio_academico =${anio} and sc.ubicacion=${sede} and not sc.nombre like'V%'
     
     group by sc.ubicacion, se.nombre
-    order by sc.ubicacion, se.nombre  
+    order by se.nombre  
 
 `
 
@@ -97,4 +97,66 @@ export const enviarDatos=(datosCompara) =>{
  
     console.log(datosCompara)
 
+}
+
+
+
+
+
+//////tratamientos de examens comisiones de cursado
+
+
+//paso one
+const buscarIncriptos = async (comision)=>{
+
+
+    let sqlstr =`select alumno from negocio.sga_insc_cursada sic where comision =${comision}`
+    try {
+
+
+        const resu = await coneccionDB.query(sqlstr)
+        // console.log(resu.rowCount)
+        return resu.rows
+    } catch (error) {
+        console.log(error)
+    }
+
+
+}
+//paso one I
+
+
+const traerDatosComision = async (comision)=>{
+
+
+    let sqlstr =`select sc.comision, sc.nombre,sc.elemento, sc.periodo_lectivo, spl.fecha_inicio_dictado, spl.fecha_fin_dictado from negocio.sga_comisiones sc
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo = sc.periodo_lectivo where comision =${comision}`
+    try {
+
+
+        const resu = await coneccionDB.query(sqlstr)
+        // console.log(resu.rowCount)
+        return resu.rows
+    } catch (error) {
+        console.log(error)
+    }
+
+
+}
+
+
+
+//rutiina de inicio de proceso
+export const tratarExamenes =(datos)=>{
+    
+    datos.forEach(async element => {
+        let alumnosInc =[]
+        let datoComision=null
+    
+        datoComision= await traerDatosComision(element.comision)
+        console.log(datoComision)    
+        alumnosInc = await  buscarIncriptos(element.comision)        
+        console.log(alumnosInc)       
+        setTimeout(()=>console.log('-------------------'),200)
+    });
 }

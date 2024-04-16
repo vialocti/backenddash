@@ -1,4 +1,4 @@
-
+/*
 export const config = {
     host: '172.22.160.100',
     user: 'postgres',
@@ -6,8 +6,8 @@ export const config = {
     database: 'toba_3_3',
     port: '5432'
 }
+*/
 
-/*
 //localLenovo
 export const config = {
   host: 'localhost',
@@ -16,4 +16,4 @@ export const config = {
   database: 'guarani_3_20_3',
   port: '5432'
 };
-*/
+

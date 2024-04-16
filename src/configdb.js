@@ -1,19 +1,13 @@
-/*
-export const config = {
-    host: '172.22.160.100',
-    user: 'postgres',
-    password: 'Cabr-0N.2433',
-    database: 'toba_3_3',
-    port: '5432'
-}
-*/
 
-//localLenovo
+import dotenv from 'dotenv'
+dotenv.config()
+console.log(process.env.HOST_L, process.env.DATABASE_L,process.env.USER_L)
+
 export const config = {
-  host: 'localhost',
-  user: 'postgres',
-  password: 'cabron.2433',
-  database: 'guarani_3_20_3',
-  port: '5432'
+  host: process.env.HOST_L,
+  user: process.env.USER_L,
+  password: process.env.PASSWORD_L,
+  database: process.env.DATABASE_L,
+  port: process.env.PORTDB_L
 };
 

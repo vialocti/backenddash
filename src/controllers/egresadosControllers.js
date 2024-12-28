@@ -63,13 +63,12 @@ export const getListadoEgreSedeCarreraAnio = async (req, res) => {
     }
 
 
-    let sql = `select sa.legajo,mp.apellido,mp.nombres, CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
+    let sql = `select ROUND(SQRT(CAST(alu.legajo AS numeric)), 4) as legajo,upper(substring(md5(mp.apellido),1,8)) AS apellido, upper(substring(md5(mp.nombres),1,16)) AS nombres, CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
     sco.fecha_egreso, CASE sa.propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,sco.promedio, sco.promedio_sin_aplazos 
     from negocio.sga_certificados_otorg sco
     inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
     inner join negocio.mdp_personas mp on mp.persona=sco.persona 
     where sa.ubicacion=${sede} and sa.propuesta=${car} and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' `
-
 
 
 
@@ -179,8 +178,9 @@ export const getEgresadosPromedios = async (req, res) => {
     let fecha_i = ''
     let fecha_f = ''
     let aniot = Number(anio) + 1
+    let anioic = Number(anio) - 1
 
-    if (ficola === '0' && ffcola === '0') {
+    if (ficola === '0' || ffcola === '0') {
         if (lapso === 'C') {
 
             fecha_i = `${anio}-01-01`
@@ -191,7 +191,13 @@ export const getEgresadosPromedios = async (req, res) => {
             fecha_i = `${anio}-04-01`
             fecha_f = `${aniot}-04-01`
 
+        } else if(lapso === 'E') {
+             fecha_i = `${anioic}-09-30`
+            fecha_f = `${anio}-10-01`
         }
+
+
+
     } else {
         fecha_i = ficola
         fecha_f = ffcola
@@ -199,24 +205,32 @@ export const getEgresadosPromedios = async (req, res) => {
     }
     let car_q = ''
     if (car === 'T') {
-        car_q = '3,4,5,6,7,8'
+        car_q = '3,4,5,6,7,9'
     } else {
         car_q = car
     }
 
 
-    let sql = `select alu.legajo,concat(per.apellido,', ',per.nombres) as nameC,cer.persona,alu.alumno,
-    case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta,
+    let sql = `select ROUND(SQRT(CAST(alu.legajo AS numeric)), 4) as legajo,concat(upper(substring(md5(per.apellido),1,8)) ,', ',upper(substring(md5(per.nombres),1,16))) as nameC,cer.persona,alu.alumno,
+    CASE alu.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
+        case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propu5esta,
     round(promedio,2) as promedio,round(promedio_sin_aplazos,2) as promesa,to_char(fecha_egreso,'dd-mm-yyyy') as fecha_egreso,
     (select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)) as anio 
    ,(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)) as aniop
    , round((fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)),'-04-01')) as DATE))/365.0, 2) as tiempo
+   , round((fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)),'-04-01')) as DATE))/365.0, 2) as tiempop
+
    from negocio.sga_certificados_otorg cer 
    inner join negocio.mdp_personas per on per.persona=cer.persona
    inner join negocio.sga_alumnos alu on alu.alumno=cer.alumno
   where fecha_egreso >'${fecha_i}' and fecha_egreso <'${fecha_f}' and certificado in (${car_q})
   order by certificado,nameC,fecha_egreso
 `
+
+
+
+
+
     try {
         const wer = await coneccionDB.query('set search_path=negocio')
         const resp = await coneccionDB.query(sql)
@@ -226,6 +240,8 @@ export const getEgresadosPromedios = async (req, res) => {
     }
 
 }
+
+
 
 //devuelve cantidad de egresados discriminados por certificado
 const cantidadEgrAnioPropuestas = async (anio, lapso) => {

@@ -1,6 +1,7 @@
 //import { Connection } from 'pg'
 import coneccionDB from '../database.js'
 import { traerCantidadporActividad, traerInscriptosSedeAnio, traerRechazadosBajaActividad, tratarExamenes } from '../services/cursadas/cursadasServices.js'
+import { traerFechaInicioIndices } from './utilesControllers.js'
 
 
 /*
@@ -46,7 +47,7 @@ export const getPeriodosLectivosAnio = async  (req, res)=>{
 //listado de comisiones
 export const getListComisionesAnio = async (req, res) => {
 
-    const { anio } = req.params
+    const { anio} = req.params
 
 
     let sqlstr = `select sc.ubicacion, se.nombre as mater,sc.comision, sc.nombre,sc.periodo_lectivo,sc.elemento,sc.nombre as nmat,se.codigo,se.nombre, spl.periodo,sp.anio_academico, sp.periodo_generico, sp.nombre , spgt.periodo_generico_tipo,sc.estado  from negocio.sga_comisiones sc 
@@ -359,10 +360,20 @@ export const resultadoActaDetallesporComision = async (req, res) => {
 }
 
 
-//materias
+//materias con comisiones anio sede
 export const getListMateriasComision = async (req, res) => {
 
-    const { anio} = req.params
+    const { anio, sede } = req.params
+        let sedem=""
+        if(parseInt(sede)===1){
+            sedem="and sc.nombre like 'M0%'"
+        }else if(parseInt(sede)===2){
+            sedem="and sc.nombre like 'S0%'"
+        }else if(parseInt(sede)===3){
+            sedem="and sc.nombre like 'GA%'"
+        }else if(parseInt(sede)===4){
+            sedem="and sc.nombre like 'SM%'"
+        }
 
 
         let sqlstr = `select distinct se.nombre  from negocio.sga_comisiones sc 
@@ -370,7 +381,7 @@ export const getListMateriasComision = async (req, res) => {
         inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
         inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
         inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
-        where sp.anio_academico =${anio} and not sc.nombre like'V%' order by se.nombre `
+        where sp.anio_academico =${anio} and not sc.nombre like'V%' ${sedem} order by se.nombre `
 
     try {
         const resu = await coneccionDB.query(sqlstr)
@@ -421,7 +432,7 @@ const traerDato=(comision,datoscrudos, dis)=>{
 }else{return false}
 }
 
-
+/*
 //rectificadas buscar actas rectificadas
 const traerDatosRectificadas=(comision, datoscrudos,dis)=>{
     
@@ -449,7 +460,7 @@ const traerDatosRectificadas=(comision, datoscrudos,dis)=>{
         }
     }
 }
-
+*/
 //traerdatos
 
 const traerDatoPerfomance=(comision,datoscrudos, dis)=>{
@@ -458,33 +469,67 @@ const traerDatoPerfomance=(comision,datoscrudos, dis)=>{
     
     //console.log(result)
     if(dis===0){
-        const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.tipo_acta==='N' && e.resultado==='A')
-        if(result){
-        return result.count
+        //const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.tipo_acta==='N' && e.resultado==='A')
+        //const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.resultado==='A')
+        let datofilter=[]
+        datofilter = datoscrudos.filter(e => e.comision === +comision && e.origen === 'R' && e.resultado === "A") // Filtrar filas con "A"
+        //console.log(datofilter)
+        if(datofilter.length>0){
+            let result = datofilter.reduce((sum, e) => sum + parseInt(e.count), 0); // Sumar los valores
+            return result
         }else{return 0}
+
     }else if(dis===1){
-        const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.tipo_acta==='N' && e.resultado==='R')
-        if(result){
-        return result.count
-        }else{return 0}
-    }else if(dis===2){
-        const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.tipo_acta==='N' && e.resultado==='U')
-        if(result){
-        return result.count
+        //const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.tipo_acta==='N' && e.resultado==='R')
+        let datofilter=[]
+        datofilter = datoscrudos.filter(e => +e.comision===+comision && e.origen==='R' && e.resultado==='R')
+        //console.log(datofilter)
+        if(datofilter.length>0){
+            let result = datofilter.reduce((sum, e) => sum + parseInt(e.count), 0); // Sumar los valores
+            return result
+        }else   
+            {return 0}
+    
+        }else if(dis===2){
+        //const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='R' && e.tipo_acta==='N' && e.resultado==='U')
+        let datofilter=[]
+        datofilter = datoscrudos.filter(e => +e.comision===+comision && e.origen==='R' &&  e.resultado==='U')
+        //console.log(datofilter)
+        if(datofilter.length>0){
+            let result = datofilter.reduce((sum, e) => sum + parseInt(e.count), 0); // Sumar los valores
+            return result
         }else{
             return 0
         }
     }else if(dis===3){
-        const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='P' && e.tipo_acta==='N' && e.resultado==='A')
-        if(result){
-        return result.count
+        //const result = datoscrudos.find(e => +e.comision===+comision && e.origen==='P' && e.tipo_acta==='N' && e.resultado==='A')
+        let datofilter=[]
+        datofilter = datoscrudos.filter(e => +e.comision===+comision && e.origen==='P'  && e.resultado==='A')
+        //console.log(datofilter)
+        if(datofilter.length>0){
+            let result = datofilter.reduce((sum, e) => sum + parseInt(e.count), 0); // Sumar los valores
+            return result
         }else{
             return 0
         }
     }
     
 }
+//traer codigo materia de la comision
+const traerCodMat=async(comision)=>{
+    //console.log(comision)
+    try {
+        let sqlqry= `select se.codigo from negocio.sga_comisiones sc
+        inner join negocio.sga_elementos se on se.elemento =sc.elemento 
+        where sc.comision=${comision}
+        `
+        const resu=await coneccionDB.query(sqlqry)
+        return resu.rows[0].codigo
+    } catch (error) {
+        console.log(error)
+    }
 
+}
 
 //traer numero rectificadas por comision
 
@@ -494,7 +539,8 @@ const traerDatoPerfomance=(comision,datoscrudos, dis)=>{
 //convertir datos crudos en por comisiones
 
 //comienzo de tratamiento de datos
-export const convertirDatos= async (ncomisiones, datoscrudos)=>{
+
+export const convertirDatos= async (ncomisiones, datoscrudos,anio)=>{
   
     let comitratamiento = ncomisiones.split(',')
     //console.log(datoscrudos)
@@ -505,6 +551,7 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
         comitratamiento.forEach(element => {
             let dato={
                 comision:0,
+                codmat:'',
                 nombre:'',
                 periodo:'',
                 regular:0,
@@ -513,9 +560,99 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
                 promocionado:0,
                 total:0,
                 porccentajeR:0.0,
-                porccentajeP:0.0
+                porccentajeP:0.0,
+                examenuno:0,
+                porcentaje1E:0.0,
+                examendos:0,
+                porcentaje2E:0.0
                }
             dato.comision=element
+           
+            dato.nombre = traerDato(element,datoscrudos, 0)
+            dato.periodo = traerDato(element,datoscrudos, 1)
+            if(dato.nombre && dato.periodo){
+                    arrayDatos.push(dato)
+            }
+        });
+        
+       
+
+        arrayDatos.forEach(elemento=>{
+            elemento.regular = traerDatoPerfomance(elemento.comision,datoscrudos, 0)
+            elemento.reprobado = traerDatoPerfomance(elemento.comision,datoscrudos, 1)
+            elemento.ausente = traerDatoPerfomance(elemento.comision,datoscrudos, 2)
+            elemento.promocionado = traerDatoPerfomance(elemento.comision,datoscrudos, 3)
+
+      })
+      //console.log('HOLA')
+
+      //console.log(arrayDatos)
+      
+     
+
+      //console.log(arrayDatos)
+
+      arrayDatos.forEach(async element=>{
+           
+          
+           element.total= parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado)
+           element.porccentajeR=parseInt(element.regular)/(parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado))
+           element.porccentajeP=parseInt(element.promocionado)/(parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado))
+
+      })
+
+
+       arrayDatos.forEach(async element =>{
+            element.codmat= await traerCodMat(element.comision)
+       })
+       
+       
+       setTimeout(()=> console.log('Ok'),2000)
+       
+       
+       //tratarExamenes(arrayDatos)
+       return arrayDatos
+
+
+      
+    } catch (error) {
+        console.log(error)
+    }
+
+
+}
+
+
+
+/*
+export const convertirDatos= async (ncomisiones, datoscrudos,anio)=>{
+  
+    let comitratamiento = ncomisiones.split(',')
+    //console.log(datoscrudos)
+    const arrayDatos = []
+  
+
+    try {
+        comitratamiento.forEach(element => {
+            let dato={
+                comision:0,
+                codmat:'',
+                nombre:'',
+                periodo:'',
+                regular:0,
+                reprobado:0,
+                ausente:0,
+                promocionado:0,
+                total:0,
+                porccentajeR:0.0,
+                porccentajeP:0.0,
+                examenuno:0,
+                porcentaje1E:0.0,
+                examendos:0,
+                porcentaje2E:0.0
+               }
+            dato.comision=element
+           
             dato.nombre = traerDato(element,datoscrudos, 0)
             dato.periodo = traerDato(element,datoscrudos, 1)
             if(dato.nombre && dato.periodo){
@@ -527,7 +664,7 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
                
                 
         })
-*/
+
         arrayDatos.forEach(elemento=>{
             elemento.regular = traerDatoPerfomance(elemento.comision,datoscrudos, 0)
             elemento.reprobado = traerDatoPerfomance(elemento.comision,datoscrudos, 1)
@@ -535,19 +672,21 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
             elemento.promocionado = traerDatoPerfomance(elemento.comision,datoscrudos, 3)
 
       })
+      console.log('HOLA')
 
-
+      console.log(arrayDatos)
+      
       arrayDatos.forEach( elemento=>{
           
            let nroAprobados  = traerDatosRectificadas(elemento.comision,datoscrudos,0)
            let nroReprobados = traerDatosRectificadas(elemento.comision,datoscrudos,1)
            let nroAusentes = traerDatosRectificadas(elemento.comision,datoscrudos,2)
            
-           /*
-           console.log(nroAprobados)
-           console.log(nroReprobados)
-           console.log(datosRectificadas)
-           */
+           
+           //console.log(nroAprobados)
+           //console.log(nroReprobados)
+           //console.log(nroAusentes)
+           
           if (nroAprobados>0){
             //console.log(elemento.regular, nroAprobados)
             elemento.regular = +elemento.regular + parseInt(nroAprobados)
@@ -567,7 +706,9 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
 
       arrayDatos.forEach(async element=>{
             const datosRectificadas =await traerNrorectificadasPorResultado(element.comision)
-            //console.log(element.comision)
+            
+            console.log(element.comision)
+            console.log(datosRectificadas)
             if(datosRectificadas.length===1){
                 //console.log(datosRectificadas)
                //console.log(datosRectificadas[0].count)
@@ -580,7 +721,7 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
                }
             
             } else if(datosRectificadas.length===2){
-                //console.log(datosRectificadas)
+                
                 //console.log(datosRectificadas[0].count)
                 //console.log(datosRectificadas[1].count)
 
@@ -603,12 +744,19 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
                 element.ausente= +element.ausente - datosRectificadas[2].count
 
             }
-            
+          
            element.total= parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado)
            element.porccentajeR=parseInt(element.regular)/(parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado))
            element.porccentajeP=parseInt(element.promocionado)/(parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado))
 
       })
+
+
+       arrayDatos.forEach(async element =>{
+            element.codmat= await traerCodMat(element.comision)
+       })
+       
+       
        setTimeout(()=> console.log('Ok'),2000)
        
        
@@ -624,13 +772,93 @@ export const convertirDatos= async (ncomisiones, datoscrudos)=>{
 
 }
 
+*/
+
 
 //detalle de actas regular, promocion por comision(nombre de la comision)
+//la madre de las funciones de resultados de actividad
 
+ 
+export const resultadoActaDetallesporComisiones = async (req, res) => {
+
+    const {anio,ncomisiones, codsede, recursado} = req.params
+    //console.log(ncomisiones)
+    let conrecu= ''
+    if (recursado==='N'){
+        conrecu=`and not upper(sc.nombre) like('%RECUR%')`
+    }else if (recursado==='R'){
+        conrecu=`and upper(sc.nombre) like('%RECUR%')`
+    }
+    
+
+    let sqlstr = `select sc.comision,sc.nombre,sp.nombre as periodo ,sa.origen,sa.tipo_acta ,resultado,count(resultado)  from negocio.sga_actas_detalle sad 
+    inner join negocio.sga_actas sa on sa.id_acta =sad.id_acta
+    inner join negocio.sga_comisiones sc on sc.comision=sa.comision 
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+    inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+    where sad.rectificado='N' and sa.estado='C' and sp.anio_academico =${anio} and sa.origen in('P','R') 
+     and sc.comision in (${ncomisiones}) and sc.nombre like('${codsede}%') ${conrecu}
+    group by  sc.comision,sc.nombre,sp.nombre,sa.origen,sa.tipo_acta,sad.resultado
+  `
+//
+    try {
+        
+        
+        const resu = await coneccionDB.query(sqlstr)
+        
+        const datos = await convertirDatos(ncomisiones, resu.rows, anio)
+       
+       setTimeout(()=>{
+        datos.forEach(async element=>{
+            element.examenuno= await traerExamenAprobadosComision(anio,element.comision,element.codmat, 1) || 0
+            element.porcentaje1E=await traerExamenAprobadosComision(anio,element.comision,element.codmat, 1)/element.total || 0
+
+            element.examendos= await traerExamenAprobadosComision(anio,element.comision,element.codmat, 2) || 0
+            element.porcentaje2E=await traerExamenAprobadosComision(anio,element.comision,element.codmat, 2)/element.total || 0
+
+            //console.log('E2')
+            //console.log(element.examendos, element.porcentaje2E)
+
+           })
+    
+        
+    },1000) 
+    setTimeout(()=>{
+       //console.log(datos)
+        res.send(datos)
+    },3000)
+        
+       //res.send(datos)
+    } catch (error) {
+
+    }
+
+}
+
+
+
+//
+
+
+
+
+
+
+
+
+
+
+
+
+
+//detalle de actas regular, promocion por comision(nombre de la comision)
+//la madre de las funciones de resultados de actividad
+
+/*primera 
 export const resultadoActaDetallesporComisiones = async (req, res) => {
 
     const {anio,ncomisiones, codsede} = req.params
-   // console.log(ncomisiones)
+    //console.log(ncomisiones)
     
 
     let sqlstr = `select sc.comision,sc.nombre,sp.nombre as periodo ,sa.origen,sa.tipo_acta ,resultado,count(resultado)  from negocio.sga_actas_detalle sad 
@@ -647,9 +875,27 @@ export const resultadoActaDetallesporComisiones = async (req, res) => {
         
         
         const resu = await coneccionDB.query(sqlstr)
-       const datos = await convertirDatos(ncomisiones, resu.rows)
-       setTimeout(()=>res.send(datos),2000) 
+       const datos = await convertirDatos(ncomisiones, resu.rows, anio)
        
+       setTimeout(()=>{
+        datos.forEach(async element=>{
+            element.examenuno= await traerExamenAprobadosComision(anio,element.comision,element.codmat, 1) || 0
+            element.porcentaje1E=await traerExamenAprobadosComision(anio,element.comision,element.codmat, 1)/element.total || 0
+
+            element.examendos= await traerExamenAprobadosComision(anio,element.comision,element.codmat, 2) || 0
+            element.porcentaje2E=await traerExamenAprobadosComision(anio,element.comision,element.codmat, 2)/element.total || 0
+
+            //console.log('E2')
+            //console.log(element.examendos, element.porcentaje2E)
+
+           })
+    
+        
+    },1000) 
+    setTimeout(()=>{
+       //console.log(datos)
+        res.send(datos)
+    },3000)
         
        //res.send(datos)
     } catch (error) {
@@ -658,6 +904,9 @@ export const resultadoActaDetallesporComisiones = async (req, res) => {
 
 }
 
+*/
+
+//
 
 //comparativa de inscripciones
 //
@@ -745,9 +994,7 @@ export const getComparativasInscripcion =async (req,res)=>{
               }
                 
                 )
-                
-             
-                
+                               
                 
                 setTimeout(()=>res.send(datosCompara),1000)
                 
@@ -760,30 +1007,101 @@ export const getComparativasInscripcion =async (req,res)=>{
 
 
 }
-
+//consulta de datos historicos
 
 export const traerDatosHistoricosResultados=async (req,res)=>{
     
-     const {sede,anios,actividad}=req.params
-     //console.log(actividad,sede,anios)
+     const {sede,anioI,anioF,actividad}=req.params
+     //console.log(actividad,sede,anioI,anioF)
     
     let sql=''
-    if(actividad==='T'){
+    if(actividad==='Todas'){
 
-        sql = `select * from fce_per.dash_actividad_resultados where anio_academico  in (${anios}) and sede='${sede}' order by actividad_nombre`
+        sql = `select * from fce_per.dash_actividad_resultados where anio_academico>=${anioI} and anio_academico<=${anioF} and sede='${sede}' order by actividad_nombre`
     }else{
     
     
-        sql = `select * from fce_per.dash_actividad_resultados where anio_academico  in (${anios}) and sede='${sede}' 
+        sql = `select * from fce_per.dash_actividad_resultados where anio_academico>=${anioI} and anio_academico<=${anioF} and sede='${sede}' 
         and actividad_nombre='${actividad}' order by anio_academico` 
     }
-    console.log(sql)
+    //console.log(sql)
     try {
         
         const resu =await coneccionDB.query(sql)
+        //console.log(resu.rows)
         res.send(resu.rows)
 
     } catch (error) {
         console.log(error)
     }
+}
+
+
+
+//actividades historicas
+
+export const traerActividadesHistoricas=async (req,res)=>{
+    const {sede, anioI}= req.params
+    
+    try {
+        let sqlStr = `SELECT actividad_nombre FROM fce_per.dash_actividad_resultados WHERE sede='${sede}' AND anio_academico=${anioI}`    
+        
+        
+        const resu = await coneccionDB.query(sqlStr)
+        res.send(resu.rows)
+
+    } catch (error) {
+        
+        console.log(error)
+    }
+}
+
+//trae examen cantidad por comision de cursada
+
+const traerExamenAprobadosComision=async (anio, comision,codmat, ciclo)=>{
+
+    const fechas = await traerFechaInicioIndices(comision)
+    //console.log(anio,comision,codmat,ciclo)
+    try {
+        let sqlstr=''
+        if (ciclo=== 2){
+        sqlstr=`select count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
+            select distinct sic.alumno from negocio.sga_insc_cursada sic 
+            inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+            inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+            inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+            where sp.anio_academico =${anio} and sc.comision=${comision}
+            ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
+            
+        `
+        }else{
+
+        sqlstr=`select fecha,turno_examen_nombre, count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
+            select distinct sic.alumno from negocio.sga_insc_cursada sic 
+            inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+            inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+            inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+            where sp.anio_academico =${anio} and sc.comision=${comision}
+            ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
+            group by fecha,turno_examen_nombre
+            order by fecha`
+
+        }
+        //console.log(sqlstr)
+            const resu = await coneccionDB.query(sqlstr)
+           
+            
+            if(ciclo===1){
+                return resu.rows[0].count
+            }
+
+            if(ciclo===2){
+                    
+                return resu.rows[0].count
+            }
+
+    } catch (error) {
+        console.log(error)
+    }
+
 }

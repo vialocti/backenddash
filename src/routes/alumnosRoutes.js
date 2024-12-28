@@ -8,6 +8,7 @@ import {
   getAlumnosPorUbiPropuesta,
   getAlumnosPorUbiPropuestaProvisorios,
   getAlumnosPorUbiProvisorios,
+  getDatosAlumnoApp,
   getEvolucionCohorte,
   getPlanesVersionActivos,
   getReinscriptosUbiProp,
@@ -15,6 +16,7 @@ import {
 
 const router = Router();
 
+router.post('/alumnologapp', getDatosAlumnoApp)
 router.get("/alumsact", getAlumnosActivos); //alumnos activos
 router.get("/planesversion", getPlanesVersionActivos); //alumnos
 router.get("/alumsactper", getAlumnosPerActivos);

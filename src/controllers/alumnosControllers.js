@@ -14,7 +14,37 @@ group by ubicacion,sa.propuesta,sa.plan_version,pv.plan,pv.nombre,pl.codigo orde
 
 
 */
+
+//verificar alumno
+
+export const getDatosAlumnoApp= async(req,res)=>{
+
+const {documento}= req.body
+
+try {
+    let sqlQry=`select distinct left(usuario,3) as claustro,sa.ubicacion,sa.propuesta,sa.legajo,sa.calidad,mpd.nro_documento , apellido, nombres, mpc.email  from negocio.mdp_personas mp 
+    inner join negocio.mdp_personas_documentos mpd on mpd.documento = mp.documento_principal 
+    inner join negocio.mdp_personas_contactos mpc on mpc.persona = mp.persona
+    inner join negocio.sga_alumnos sa on sa.persona= mp.persona
+    where not legajo isnull and mpc.contacto_tipo ='MP' and mpd.nro_documento ='${documento}'
+    `
+
+    const result = await coneccionDB.query(sqlQry)
+    if(result.rows.length>0){
+            res.status(201).send(result.rows)
+    }else{
+        res.status(404).send({message:'No existe Alumno'})
+    }
+} catch (error) {
+    //console.log(error)
+    res.status(500).send({message:'se produjo un error'})
+}
+
+}
+
+
 //planes activos con versiones 
+
 export const getPlanesVersionActivos = async (req, res) => {
     let sqlstr = `select pv.plan_version, pv.plan,pv.version, pv.nombre,pl.codigo,pv.estado from negocio.sga_planes_versiones pv 
     inner join negocio.sga_planes pl on pl.plan=pv.plan
@@ -36,7 +66,7 @@ export const getAlumnosActivos = async (req, res) => {
         const resu = await coneccionDB.query(sql)
         res.send(resu.rows)
     } catch (error) {
-
+       res.status(500).send({message:'Error fatal'})
     }
 
 }
@@ -133,11 +163,12 @@ export const getAlumnosPorUbiPropuestaProvisorios = async (req, res) => {
 }
 
 //alumnos por ubicacion - propuesta provisorios
+
 export const getAlumnosPorUbiProvisorios = async (req, res) => {
 
-
+    let anioac=2024
     let sqlqy = ` select case ubicacion WHEN 1 THEN 185 WHEN 2 THEN 186 WHEN 3 THEN 2714 WHEN 4 THEN 2970 END as codinst,count(propuesta)  
-    from negocio.sga_alumnos where legajo isnull and calidad='A' and propuesta in (2,3,6,7,8)  group by ubicacion order by ubicacion`
+    from negocio.sga_alumnos where legajo isnull and calidad='A' and propuesta in (2,3,6,7,8) and anio_academico=${anioac} group by ubicacion order by ubicacion`
     try {
         const resu = await coneccionDB.query(sqlqy)
         res.send(resu.rows)
@@ -147,6 +178,7 @@ export const getAlumnosPorUbiProvisorios = async (req, res) => {
     }
 
 }
+    
 //por ubicacion
 //alumnos por ubicacion - propuesta
 export const getAlumnosPorUbi = async (req, res) => {
@@ -231,6 +263,46 @@ const TreinscriptosPorAnioCohorte = async (anioI, sede, carrera, i, tipoI) => {
 }
 
 
+const traerEgresadosCohorte=async (anioI, sede, carrera,i,tipoI)=>{
+    let anioR= i + 1
+    let fecha = anioR +'-04-01'
+    /*
+    let certificado=0
+    if(carrera==='1')
+        {certificado='3'}else if(carrera===2){
+            certificado=4
+        }else if(carrera==='3'){
+            certificado=5
+        }else if(carrera==='6'){
+            certificado=6
+        }else if(carrera==='7'){
+            certificado=7
+        }else if(carrera==='8'){
+            certificado=9
+        }
+*/
+    try {
+        
+        //let sqlstr =`select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 8 then 'CP' end as carrera, count(certificado) from negocio.sga_certificados_otorg sco  
+        let sqlstr =`select count(*) from negocio.sga_certificados_otorg sco  
+                where fecha_egreso<='${fecha}' and persona in (select sa.persona  from negocio.sga_propuestas_aspira spa 
+                inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+                where anio_academico =${anioI} and spa.propuesta in (${carrera}) and sa.ubicacion=${sede} and spa.tipo_ingreso =${tipoI} 
+                and situacion_asp in (1,2) and not sa.legajo is null) and certificado in (3,4,5,6,7,9)
+                        
+        `
+        const resultado = await coneccionDB.query(sqlstr)
+
+        return resultado.rows
+    } catch (error) {
+        
+    console.log(error)
+    
+    }
+
+}
+
+
 export const getEvolucionCohorte = async (req, res) => {
 
     const { anioI, sede, carrera, anioFC, tipoI } = req.params
@@ -241,11 +313,14 @@ export const getEvolucionCohorte = async (req, res) => {
         for (let i = Number(anioI) + 1; i < Number(anioFC) + 1; i++) {
 
             let totalI = await TreinscriptosPorAnioCohorte(anioI, sede, carrera, i, tipoI)
-            let objti = { anio: i, total: totalI.rows[0] }
+            let egresados=await traerEgresadosCohorte(anioI, sede, carrera, i, tipoI)
+            //console.log(egresados)
+            let objti = { anio: i, total: totalI.rows[0],tote:egresados[0].count }
 
             aniototal.push(objti)
 
         }
+        //console.log(aniototal)
         res.send(aniototal)
     } catch (error) {
         console.log(error)

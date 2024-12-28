@@ -47,8 +47,7 @@ export const traerCantidadporActividad = async (anioc,sede,actividad)  =>{
     inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
     where sp.anio_academico =${anioc} and sc.ubicacion=${sede} and se.nombre='${actividad}' and  not sc.nombre like'V%'
     
-    group by sc.ubicacion, se.nombre
-     
+    group by sc.ubicacion, se.nombre     
 
 `
 
@@ -91,6 +90,7 @@ export const traerRechazadosBajaActividad = async (anio,sede,actividad)=>{
 
 
 }   
+
 
 
 export const enviarDatos=(datosCompara) =>{

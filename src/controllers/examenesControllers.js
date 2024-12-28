@@ -79,7 +79,7 @@ export const getResultadosPorActa = async (req, res) => {
 
 
 //si esta aprobado el alumno acta alumno comision
-
+/*
 export const getAprobadoActaAlumno = async (req, res) => {
 
     const {idacta, alumno} = req.params
@@ -99,5 +99,301 @@ export const getAprobadoActaAlumno = async (req, res) => {
     }
 
 }
-    
+*/
 
+export const getAprobadoActaAlumno = async (req, res) => {
+    const { idacta, alumno } = req.params;
+
+    // Preparar la consulta con parámetros para evitar inyección SQL
+    const sqlstr = `
+        SELECT COUNT(*) 
+        FROM negocio.sga_actas_detalle 
+        WHERE id_acta = $1 AND alumno = $2
+        GROUP BY resultado
+    `;
+
+    try {
+        // Ejecutar la consulta con parámetros
+        const resu = await coneccionDB.query(sqlstr, [idacta, alumno]);
+
+        // Verificar si hay resultados y enviar la respuesta
+        if (resu.rows.length === 0) {
+            res.status(404).send({ message: 'No se encontraron registros para el alumno y acta especificados.' });
+        } else {
+            res.send(resu.rows);
+        }
+    } catch (error) {
+        console.error('Error en la consulta:', error);
+        res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
+    }
+};
+
+
+
+//cantidad de materias aprobadas por alumno en un año
+//
+const alumnost =async(anio,sede,propuesta)=>{
+    
+    const sqlstr = `
+             SELECT count(sa.alumno) as canti
+          FROM negocio.sga_propuestas_aspira spa
+          INNER JOIN negocio.sga_alumnos sa ON sa.persona = spa.persona AND sa.propuesta = spa.propuesta
+          WHERE anio_academico = $1
+            AND sa.ubicacion = $2
+            AND spa.propuesta = $3
+            AND spa.tipo_ingreso <> 6
+            AND situacion_asp IN (1, 2)
+            AND sa.legajo IS NOT NULL
+   `;
+
+    try {
+        const resu = await coneccionDB.query(sqlstr, [anio, sede, propuesta]);
+        //console.log(resu)
+        return resu.rows[0].canti
+
+    } catch (error) {
+        console.error('Error en la consulta:', error);
+        return ({ message: 'Ocurrió un error en el servidor.' });
+    }
+}
+
+//HISTORICOS
+const tratarHistoricosaprobadasAlumnosAnio=async(anio,sede,propuesta, tablavalores )=>{
+    
+  
+    let vh={
+        anio:anio,
+        sede:sede,
+        propuesta:propuesta,
+        apcero:tablavalores[0].cero,
+        apuna:tablavalores[0].una,
+        apdos:tablavalores[0].dos,
+        aptres:tablavalores[0].tres,
+        apcuatro:tablavalores[0].cuatro,
+        apcinco:tablavalores[0].cinco,
+        apseis:tablavalores[0].seis,
+        apsiete:tablavalores[0].siete,
+        apocho:tablavalores[0].ocho,
+        apnueve:tablavalores[0].nueve,
+
+    }
+    let sqlInsert=`
+        INSERT INTO fce_per.dash_aprobadas_anio (anio, sede, propuesta, ap_cero, ap_una, ap_dos, ap_tres,ap_cuatro, ap_cinco, ap_seis, ap_siete, ap_ocho, ap_nueve)
+        VALUES(${vh.anio}, ${vh.sede}, ${vh.propuesta},${vh.apcero},${vh.apuna},${vh.apdos},${vh.aptres},${vh.apcuatro},${vh.apcinco},${vh.apseis},${vh.apsiete},${vh.apocho},${vh.apnueve} )
+    `
+    //console.log(sqlInsert)
+    const resu = await coneccionDB.query(sqlInsert)
+    return resu
+
+}
+//
+const tratarQry=(alumnos)=>{
+
+    let tabla=[]
+    let datos={
+        cero:0,
+        una:alumnos.filter(alumno => alumno.total_aprobadas==='1').length,
+        dos:alumnos.filter(alumno => alumno.total_aprobadas==='2').length,
+        tres:alumnos.filter(alumno => alumno.total_aprobadas==='3').length,
+        cuatro:alumnos.filter(alumno => alumno.total_aprobadas==='4').length,
+        cinco:alumnos.filter(alumno => alumno.total_aprobadas==='5').length,
+        seis:alumnos.filter(alumno => alumno.total_aprobadas==='6').length,
+        siete:alumnos.filter(alumno => alumno.total_aprobadas==='7').length,
+        ocho:alumnos.filter(alumno => alumno.total_aprobadas==='8').length,
+        nueve:alumnos.filter(alumno => alumno.total_aprobadas==='9').length,
+
+    }
+    tabla.push(datos)
+    return tabla
+}
+
+
+//primero solo los ingresantes de una carrera y sede ingresantes puros 
+
+export const traerAprobadasPorAlumnoSedePropuestaAnio = async(req,res)=>{
+    const {anio,sede,propuesta,tipoO}=req.params
+
+    const sqlstr = `
+    SELECT alumno, COUNT(alumno) AS total_aprobadas
+    FROM negocio.vw_hist_academica vha
+    WHERE origen IN ('E', 'P')
+      AND resultado = 'A'
+      AND alumno IN (
+          SELECT sa.alumno
+          FROM negocio.sga_propuestas_aspira spa
+          INNER JOIN negocio.sga_alumnos sa ON sa.persona = spa.persona AND sa.propuesta = spa.propuesta
+          WHERE anio_academico = $1
+            AND sa.ubicacion = $2
+            AND spa.propuesta = $3
+            AND spa.tipo_ingreso <> 6
+            AND situacion_asp IN (1, 2)
+            AND sa.legajo IS NOT NULL
+      )
+      AND anio_academico = $1
+    GROUP BY alumno;
+`;
+
+try {
+    // Ejecutar la consulta con parámetros
+    const resu = await coneccionDB.query(sqlstr, [anio, sede, propuesta]);
+
+        // Verificar si hay resultados y enviar la respuesta
+        if (resu.rows.length === 0) {
+            res.status(404).send({ message: 'No se encontraron registros.' });
+        } else {
+            let alumnostmatap= resu.rows.length
+            let alumnostI = parseInt( await alumnost(anio,sede,propuesta))
+            let alucero=alumnostI-alumnostmatap
+            //console.log(alucero)
+            const tablavalores = tratarQry(resu.rows)
+            tablavalores[0].cero=alucero
+            if (tipoO ==='H'){
+               let resp = tratarHistoricosaprobadasAlumnosAnio(anio,sede,propuesta,tablavalores)
+               res.send(resp)
+            }else if(tipoO==='Q'){
+                res.send(tablavalores);
+            }
+        }
+    } catch (error) {
+        console.error('Error en la consulta:', error);
+        res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
+    }
+
+
+}
+
+
+/////datos de examenes por actividad 
+
+////
+
+const tratarDatosActividadesExPro=(datosqry)=>{
+
+     //console.log(datosqry)
+    let datosReturn =[]
+    
+    let filad={
+        actividad:'',
+        promocionados:0,
+        aprobadosE:0,
+        reprobadosE:0,
+        ausentesE:0
+    }
+
+    datosqry.forEach(element => {
+        
+        if (datosReturn.length ===0){
+
+            filad={
+                actividad:element.actividad_nombre,
+                promocionados:element.origen==='P' ? element.cantidad:0,
+                aprobadosE:element.origen==='E' && element.resultado==='A' ? element.cantidad:0,
+                reprobadosE:element.origen==='E' && element.resultado==='R' ? element.cantidad:0,
+                ausentesE:element.origen==='E' && element.resultado==='U' ? element.cantidad:0
+            }
+            datosReturn.push(filad)
+        }else{
+            let esta =  datosReturn.find(elementr=>elementr.actividad===element.actividad_nombre)
+            if (!esta){
+                filad={
+                    actividad:element.actividad_nombre,
+                    promocionados:element.origen==='P' ? element.cantidad:0,
+                    aprobadosE:element.origen==='E' && element.resultado==='A' ? element.cantidad:0,
+                    reprobadosE:element.origen==='E' && element.resultado==='R' ? element.cantidad:0,
+                    ausentesE:element.origen==='E' && element.resultado==='U' ? element.cantidad:0
+                }
+                datosReturn.push(filad)
+            } 
+        }
+
+        datosReturn.forEach(element => {
+
+            let actividad = datosqry.filter(ele=>ele.actividad_nombre===element.actividad)
+            //console.log(actividad)
+            actividad.forEach(elem=>{
+                if(elem.origen==='P'){
+                    element.promocionados=elem.cantidad
+                }else if(elem.origen==='E' && elem.resultado==='A'){
+                    element.aprobadosE=elem.cantidad
+                }else if(elem.origen==='E' && elem.resultado==='R'){
+                    element.reprobadosE=elem.cantidad
+                }else if(elem.origen==='E' && elem.resultado==='U'){
+                    element.ausentesE=elem.cantidad
+                }
+            })
+            //console.log('---------------------------')
+        })
+
+    });
+
+    return datosReturn
+}
+
+//////
+    
+export const traerAprobadasAnioPropuesta = async (req, res) => {
+    const { anio, sede, propuesta } = req.params;
+
+    // Declaración segura de la consulta SQL con parámetros
+    const sqlstr = `
+        SELECT actividad_nombre, origen, resultado, COUNT(actividad_nombre) AS cantidad
+        FROM negocio.vw_hist_academica vha
+        WHERE alumno IN (
+            SELECT sa.alumno
+            FROM negocio.sga_propuestas_aspira spa
+            INNER JOIN negocio.sga_alumnos sa ON sa.persona = spa.persona AND sa.propuesta = spa.propuesta
+            WHERE anio_academico = $1
+              AND sa.ubicacion = $2
+              AND spa.propuesta = $3
+              AND spa.tipo_ingreso <> 6
+              AND situacion_asp IN (1, 2)
+              AND sa.legajo IS NOT NULL
+        ) 
+        AND anio_academico = $1
+        GROUP BY actividad_nombre, origen, resultado
+    `;
+
+    try {   
+        // Ejecutar la consulta con los parámetros
+        let resu = await coneccionDB.query('SET search_path=negocio');
+        resu = await coneccionDB.query(sqlstr, [anio, sede, propuesta]);
+
+        // Retornar el resultado completo al cliente
+        let datosEP=tratarDatosActividadesExPro(resu.rows)
+        res.send(datosEP);
+
+    } catch (error) {
+        console.error('Error en la consulta:', error);
+        res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
+    }
+};
+
+
+export const traerdatosHistoricoAprobadasporAlumno =async(req,res)=>{
+
+    const {sede,propuesta,anioi,aniof} = req.params
+    
+    
+    if (propuesta==='10'){
+    
+    }
+
+    let sqlstr = `select * from fce_per.dash_aprobadas_anio 
+    where sede=${sede} and anio>=${anioi} and anio<=${aniof} 
+    and `
+
+    if (propuesta==='10'){
+        sqlstr += `propuesta in (2,3,7,8) order by anio,propuesta` 
+    }else{
+        sqlstr += `propuesta=${propuesta} order by anio,propuesta`
+    }
+
+    try {
+                
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+}

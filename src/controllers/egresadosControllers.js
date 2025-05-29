@@ -1,5 +1,4 @@
-import coneccionDB from '../database.js'
-
+import coneccionDB from "../database.js";
 
 //promedio por carrera anio
 
@@ -155,7 +154,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
         from negocio.sga_certificados_otorg sco
         inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
         inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-        where sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
+        where sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' and certificado  in (3,4,5,6,7,9)
         group by sa.ubicacion
     `
 
@@ -211,9 +210,9 @@ export const getEgresadosPromedios = async (req, res) => {
     }
 
 
-    let sql = `select ROUND(SQRT(CAST(alu.legajo AS numeric)), 4) as legajo,concat(upper(substring(md5(per.apellido),1,8)) ,', ',upper(substring(md5(per.nombres),1,16))) as nameC,cer.persona,alu.alumno,
+    let sql = `select alu.legajo,CONCAT(per.apellido,', ',per.nombres) as nameC,cer.persona,alu.alumno,
     CASE alu.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
-        case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propu5esta,
+        case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta,
     round(promedio,2) as promedio,round(promedio_sin_aplazos,2) as promesa,to_char(fecha_egreso,'dd-mm-yyyy') as fecha_egreso,
     (select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)) as anio 
    ,(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)) as aniop
@@ -234,6 +233,7 @@ export const getEgresadosPromedios = async (req, res) => {
     try {
         const wer = await coneccionDB.query('set search_path=negocio')
         const resp = await coneccionDB.query(sql)
+        //console.log(resp.rows)
         res.send(resp.rows)
     } catch (error) {
         console.log(error)
@@ -269,7 +269,7 @@ const cantidadEgrAnioPropuestas = async (anio, lapso) => {
     let sqlstr = `select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta, count(certificado)
     , sexo from negocio.sga_certificados_otorg cert
     inner join negocio.mdp_personas mp on mp.persona=cert.persona
-    where fecha_egreso >='${fecha_i}' and fecha_egreso<='${fecha_f}' 
+    where fecha_egreso >='${fecha_i}' and fecha_egreso<='${fecha_f}' and certificado in(3,4,5,6,7,9)
     group by certificado,sexo
     `
 
@@ -338,6 +338,47 @@ export const cantidadEresadosaniosPropuesta = async (req, res) => {
 
 
 
-
+export const obtenerCertificadosPorAnio=async (req, res)=> {
+  
+    const hoy = new Date();
+    const anioActual = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    const fechaFinal = `${anioActual}-${mes}-${dia}`;
+  
+    const resultados = [];
+  
+    try {
+      
+  
+      for (let i = 0; i < 6; i++) { // 0 = año actual, hasta 5 años atrás
+        const anio = anioActual - i;
+        const fechaInicio = `${anio}-01-01`;
+        const fechaFin = `${anio}-${mes}-${dia}`;
+  
+        const query = `
+          SELECT COUNT(*) AS cantidad
+          FROM negocio.sga_certificados_otorg sco
+          WHERE certificado IN (3,4,5,6,7,9,16)
+            AND fecha_egreso >= $1
+            AND fecha_egreso <= $2
+        `;
+  
+        const res = await coneccionDB.query(query, [fechaInicio, fechaFin]);
+        resultados.push({
+          anio,
+          cantidad: parseInt(res.rows[0].cantidad, 10)
+        });
+      }
+  
+     // console.log(resultados);
+     
+      res.send(resultados);
+  
+    } catch (err) {
+      console.error('Error al consultar:', err);
+        res.status(500).send('Error al consultar la base de datos');
+    }
+  }
 
 

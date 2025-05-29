@@ -1,30 +1,243 @@
-import coneccionDB from '../database.js'
+import coneccionDB from "../database.js";
 
-//mesas examen anio
-export const getMesasExamen = async (req, res) => {
+//turnos exmanes
 
-    const {anio} = req.params
+// Endpoint para obtener los turnos de mesa según el año académico
+export const getTurnosMesaAni = async (req, res) => {
+    const { anio } = req.params;
     
+    try {
+      const sqlstr = `
+        SELECT DISTINCT 
+          vme.turno_examen, 
+          vme.turno_examen_periodo, 
+          vme.turno_examen_nombre 
+        FROM negocio.vw_mesas_examen vme 
+        WHERE anio_academico = $1
+      `;
+      const resu = await coneccionDB.query(sqlstr, [anio]);
+      res.send(resu.rows);
+    } catch (error) {
+      console.error("Error en getTurnosMesaAni:", error);
+      res.status(500).send("Error al obtener turnos de mesa");
+    }
+  };
+  
+  // Endpoint para obtener las mesas de examen según año, período y ubicación
+ /*
+  export const getMesasExamen = async (req, res) => {
+    const { anio, periodo, ubicacion } = req.params;
+  
+    try {
+      // Establecer el esquema a "negocio"
+      await coneccionDB.query('SET search_path = negocio');
+      
+      const sqlstr = `
+        SELECT DISTINCT 
+          vme.turno_examen_nombre,
+          vme.llamado_mesa,
+          vme.mesa_examen,
+          vme.mesa_examen_elemento_nombre,
+          vme.mesa_examen_ubicacion,
+          vme.mesa_examen_nombre
+        FROM negocio.vw_mesas_examen vme
+        WHERE anio_academico = $1 
+          AND vme.turno_examen_periodo in ($2) 
+          AND vme.mesa_examen_ubicacion = $3 
+          AND vme.llamado_mesa_estado = 'A'
+          AND NOT vme.mesa_examen_nombre like 'V%'
+          ORDER BY  vme.mesa_examen_elemento_nombre
+      `;
+      const resu = await coneccionDB.query(sqlstr, [anio, periodo, ubicacion]);
+      
+      
+      res.send(resu.rows);
 
-    let sqlstr = `select sa.id_acta,sp.periodo, sp.nombre as nper,sme.mesa_examen ,sme.nombre, sme.elemento,se.nombre , sme.ubicacion  from negocio.sga_mesas_examen sme 
-    inner join  negocio.sga_llamados_mesa slm on slm.mesa_examen=sme.mesa_examen 
-    inner join negocio.sga_llamados_turno slt on slt.llamado = slm.llamado
-    inner join negocio.sga_actas sa on sa.llamado_mesa = slm.llamado_mesa 
-    inner join negocio.sga_turnos_examen ste on ste.turno_examen =slt.turno_examen
-    inner join negocio.sga_periodos sp on sp.periodo=ste.periodo
-    inner join negocio.sga_elementos se on se.elemento =sme.elemento 
-    where sp.anio_academico =${anio} and sa.origen ='E' and sa.estado ='C'
-    order by ubicacion, se.nombre
-    `
+    } catch (error) {
+      console.error("Error en getMesasExamen:", error);
+      res.status(500).send("Error al obtener mesas de examen");
+    }
+  };
+  */
+  ///new getmesas
+  export const getMesasExamen = async (req, res) => {
+    const { anio, periodo, ubicacion } = req.params;
+  
+    try {
+      // Establecer el esquema a "negocio"
+      await coneccionDB.query('SET search_path = negocio');
+  
+      // Asegurar que `periodo` es un array si se reciben múltiples turnos
+      const periodosArray = periodo.split(','); // Convertir la cadena a array si es necesario
+      const placeholders = periodosArray.map((_, index) => `$${index + 2}`).join(','); // Crear placeholders dinámicos
+  
+      const sqlstr = `
+        SELECT DISTINCT 
+          vme.turno_examen_nombre,
+          vme.llamado_mesa,
+          vme.mesa_examen,
+          vme.mesa_examen_elemento_nombre,
+          vme.mesa_examen_ubicacion,
+          vme.mesa_examen_nombre
+        FROM negocio.vw_mesas_examen vme
+        WHERE anio_academico = $1 
+          AND vme.turno_examen_periodo IN (${placeholders}) 
+          AND vme.mesa_examen_ubicacion = $${periodosArray.length + 2} 
+          AND vme.llamado_mesa_estado = 'A'
+          AND NOT vme.mesa_examen_nombre LIKE 'V%'
+        ORDER BY vme.mesa_examen_elemento_nombre
+      `;
+  
+      const queryParams = [anio, ...periodosArray, ubicacion]; // Parametros en orden
+      const resu = await coneccionDB.query(sqlstr, queryParams);
+  
+      res.send(resu.rows);
+  
+    } catch (error) {
+      console.error("Error en getMesasExamen:", error);
+      res.status(500).send("Error al obtener mesas de examen");
+    }
+  };
+  
+
+
+  // Endpoint para obtener totales por llamado de mesa
+  export const getResultadoMesaExamen = async (req, res) => {
+    const { llamado_mesa } = req.params;
+    
+    try {
+      // Establecer el esquema a "negocio"
+      await coneccionDB.query('SET search_path = negocio');
+      
+      const sqlstr = `
+        SELECT 
+          resultado, 
+          COUNT(resultado) AS total 
+        FROM negocio.vw_actas 
+        WHERE llamado_mesa = $1
+        GROUP BY resultado
+      `;
+      const resu = await coneccionDB.query(sqlstr, [llamado_mesa]);
+      res.send(resu.rows);
+    } catch (error) {
+      console.error("Error en getResultadoMesaExamen:", error);
+      res.status(500).send("Error al obtener resultados de mesa de examen");
+    }
+  };
+  
+
+  //////
+  // Endpoint para obtener totales por llamado de mesa
+  export const getResultadoTurnoExamen = async (req, res) => {
+    const { llamados } = req.params;
+    
+    try {
+      // Establecer el esquema a "negocio"
+      await coneccionDB.query('SET search_path = negocio');
+      
+      const sqlstr = `
+        SELECT 
+          resultado, 
+          COUNT(resultado) AS total 
+        FROM negocio.vw_actas 
+        WHERE llamado_mesa in (${llamados})
+        GROUP BY resultado
+      `;
+      const resu = await coneccionDB.query(sqlstr);
+      res.send(resu.rows);
+    } catch (error) {
+      console.error("Error en getResultadoMesaExamen:", error);
+      res.status(500).send("Error al obtener resultados de mesa de examen");
+    }
+  };
+  
+////
+
+  ////
+  //////
+////////////////////////
+  
+//////////
+
+export const getMesasExamenTUTI = async (req, res) => {
+  const { anio, periodo, ubicacion } = req.params;
+
+  // Validación básica de parámetros
+  if (!anio || !periodo || !ubicacion) {
+    return res.status(400).send("Parámetros insuficientes");
+  }
+
+  // Condición para la ubicación: si ubicacion es 5, usamos IN (1,2,3,4), de lo contrario, usamos igualdad
+  const ubicacionCondition =
+    Number(ubicacion) === 5
+      ? "vme.mesa_examen_ubicacion IN (1,2,4)"
+      : `vme.mesa_examen_ubicacion = ${ubicacion}`;
+
+  try {
+
+   const sqlstr = `
+      WITH resultados AS (
+  SELECT 
+    va.llamado_mesa,
+    CASE WHEN sa.propuesta = 1 THEN 'CPN'
+         WHEN sa.propuesta = 2 THEN 'LA'                                  
+          WHEN sa.propuesta = 3 THEN 'LE'
+          WHEN sa.propuesta = 7 THEN 'LLO'
+          WHEN sa.propuesta = 8 THEN 'CP'
+    END AS propuesta,
+    COUNT(CASE WHEN va.resultado = 'A' THEN 1 END) AS aprobados,
+    COUNT(CASE WHEN va.resultado = 'R' THEN 1 END) AS reprobados,
+    COUNT(CASE WHEN va.resultado = 'U' THEN 1 END) AS ausentes
+  FROM negocio.vw_actas va
+  INNER JOIN negocio.sga_alumnos sa ON va.alumno = sa.alumno
+  GROUP BY va.llamado_mesa, sa.propuesta
+)
+SELECT DISTINCT 
+  vme.turno_examen_nombre,
+  vme.llamado_mesa,
+  vme.mesa_examen,
+  vme.mesa_examen_elemento_nombre,
+  vme.mesa_examen_ubicacion,
+  vme.mesa_examen_nombre,
+  r.propuesta,
+  COALESCE(r.aprobados, 0) AS aprobados,
+  COALESCE(r.reprobados, 0) AS reprobados,
+  COALESCE(r.ausentes, 0) AS ausentes,
+  COALESCE(r.aprobados, 0) + COALESCE(r.reprobados, 0) + COALESCE(r.ausentes, 0) AS total
+FROM negocio.vw_mesas_examen vme
+LEFT JOIN resultados r ON vme.llamado_mesa = r.llamado_mesa
+WHERE vme.anio_academico = ${anio}
+  AND vme.turno_examen_periodo IN (${periodo}) 
+  AND ${ubicacionCondition}
+  AND vme.llamado_mesa_estado = 'A'
+  AND NOT vme.mesa_examen_nombre LIKE 'V%'
+  AND r.propuesta IS NOT NULL
+  AND (COALESCE(r.aprobados, 0) + COALESCE(r.reprobados, 0) + COALESCE(r.ausentes, 0)) > 0
+ORDER BY vme.mesa_examen_elemento_nombre, r.propuesta;`
+
+   
 
     try {
-         const resu = await coneccionDB.query(sqlstr)
-        res.send(resu.rows)
-     } catch (error) {
-        console.log(error)        
-      }
-        
-}
+      await coneccionDB.query('BEGIN');
+      await coneccionDB.query('SET search_path = negocio');
+      const resu = await coneccionDB.query(sqlstr);
+      await coneccionDB.query('COMMIT');
+      const result = resu.rows.filter(element => element.total > 0);
+      res.status(200).send(result);
+    } catch (queryError) {
+      await coneccionDB.query('ROLLBACK');
+      console.error("Error en la consulta:", queryError);
+      res.status(500).send("Error al obtener mesas de examen");
+    }
+  } catch (connectionError) {
+    console.error("Error en la conexión a la base de datos:", connectionError);
+    res.status(500).send("Error de conexión a la base de datos");
+  }
+};
+
+
+
+  //////////
 
 //mesas examenes con total R, A y U
 export const getActasExamenTotalResu = async (req, res) => {
@@ -200,7 +413,7 @@ const tratarQry=(alumnos)=>{
         seis:alumnos.filter(alumno => alumno.total_aprobadas==='6').length,
         siete:alumnos.filter(alumno => alumno.total_aprobadas==='7').length,
         ocho:alumnos.filter(alumno => alumno.total_aprobadas==='8').length,
-        nueve:alumnos.filter(alumno => alumno.total_aprobadas==='9').length,
+        nueve:alumnos.filter(alumno => parseInt(alumno.total_aprobadas)>8).length,
 
     }
     tabla.push(datos)
@@ -252,6 +465,13 @@ try {
                res.send(resp)
             }else if(tipoO==='Q'){
                 res.send(tablavalores);
+            }else if (tipoO==='R'){//tipo reporte 
+                tablavalores[0].anio=anio
+                tablavalores[0].sede=sede
+                tablavalores[0].propuesta=propuesta
+              //  console.log(tablavalores)
+                res.send(tablavalores)
+
             }
         }
     } catch (error) {
@@ -397,3 +617,89 @@ export const traerdatosHistoricoAprobadasporAlumno =async(req,res)=>{
     }
 
 }
+
+
+
+
+
+
+
+
+/*
+    let sqlstr = `select sa.id_acta,sp.periodo, sp.nombre as nper,sme.mesa_examen ,sme.nombre, sme.elemento,se.nombre , sme.ubicacion  from negocio.sga_mesas_examen sme 
+    inner join  negocio.sga_llamados_mesa slm on slm.mesa_examen=sme.mesa_examen 
+    inner join negocio.sga_llamados_turno slt on slt.llamado = slm.llamado
+    inner join negocio.sga_actas sa on sa.llamado_mesa = slm.llamado_mesa 
+    inner join negocio.sga_turnos_examen ste on ste.turno_examen =slt.turno_examen
+    inner join negocio.sga_periodos sp on sp.periodo=ste.periodo
+    inner join negocio.sga_elementos se on se.elemento =sme.elemento 
+    where sp.anio_academico =$1 and sa.origen ='E' and sa.estado ='C'  and sp.periodo =$2
+    order by ubicacion, se.nombre`
+*/
+
+
+
+///
+
+export const traerPeriodosTurnos=async (req,res)=>{
+
+const {anio}= req.params
+
+const sqlstr = `SELECT * FROM fce_per.dash_turnos_examenes WHERE aniolectivo=$1`
+
+try {
+
+  // Ejecutar la consulta con los parámetros
+  
+  const resu = await coneccionDB.query(sqlstr, [anio]);
+
+  // Retornar el resultado completo al cliente
+  
+  res.send(resu.rows);
+
+} catch (error) {
+  console.error('Error en la consulta:', error);
+  res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
+}
+
+
+}
+
+
+
+
+
+
+
+/*
+
+ const sqlstrold = `
+      WITH resultados AS (
+        SELECT 
+          llamado_mesa,
+          COUNT(CASE WHEN resultado = 'A' THEN 1 END) AS aprobados,
+          COUNT(CASE WHEN resultado = 'R' THEN 1 END) AS reprobados,
+          COUNT(CASE WHEN resultado = 'U' THEN 1 END) AS ausentes
+        FROM negocio.vw_actas
+        GROUP BY llamado_mesa
+      )
+      SELECT DISTINCT 
+        vme.turno_examen_nombre,
+        vme.llamado_mesa,
+        vme.mesa_examen,
+        vme.mesa_examen_elemento_nombre,
+        vme.mesa_examen_ubicacion,
+        vme.mesa_examen_nombre,
+        COALESCE(r.aprobados, 0) AS aprobados,
+        COALESCE(r.reprobados, 0) AS reprobados,
+        COALESCE(r.ausentes, 0) AS ausentes,
+        COALESCE(r.aprobados, 0) + COALESCE(r.reprobados, 0) + COALESCE(r.ausentes, 0) AS total
+      FROM negocio.vw_mesas_examen vme
+      LEFT JOIN resultados r ON vme.llamado_mesa = r.llamado_mesa
+      WHERE vme.anio_academico = ${anio}
+        AND vme.turno_examen_periodo in (${periodo}) 
+        AND ${ubicacionCondition}
+        AND vme.llamado_mesa_estado = 'A'
+        AND NOT vme.mesa_examen_nombre LIKE 'V%'
+      ORDER BY vme.mesa_examen_elemento_nombre;
+    `;*/

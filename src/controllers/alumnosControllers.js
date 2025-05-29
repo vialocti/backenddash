@@ -1,4 +1,5 @@
 import coneccionDB from '../database.js'
+//const coneccionDB = require('../database.js');
 
 /*
 select pv.plan_version, pv.plan,pv.version, pv.nombre,pl.codigo from negocio.sga_planes_versiones pv 
@@ -21,14 +22,30 @@ export const getDatosAlumnoApp= async(req,res)=>{
 
 const {documento}= req.body
 
+const hoy = new Date();
+const anioActual = hoy.getFullYear();
+
+// Crear fechas de inicio y fin del rango
+const fechaInicio = new Date(`${anioActual}-03-10`);
+const fechaFin = new Date(`${anioActual}-06-01`);
+
+// ¿Está hoy dentro del rango?
+const enRango = hoy >= fechaInicio && hoy <= fechaFin;
+let whereClause = `
+  ${enRango ? '' : 'not legajo isnull and'}
+  mpc.contacto_tipo = 'MP' 
+  and sa.calidad='A' 
+  and mpd.nro_documento = '${documento}'
+`;
+
 try {
     let sqlQry=`select distinct left(usuario,3) as claustro,sa.ubicacion,sa.propuesta,sa.legajo,sa.calidad,mpd.nro_documento , apellido, nombres, mpc.email  from negocio.mdp_personas mp 
     inner join negocio.mdp_personas_documentos mpd on mpd.documento = mp.documento_principal 
     inner join negocio.mdp_personas_contactos mpc on mpc.persona = mp.persona
     inner join negocio.sga_alumnos sa on sa.persona= mp.persona
-    where not legajo isnull and mpc.contacto_tipo ='MP' and mpd.nro_documento ='${documento}'
+    where ${whereClause}
     `
-
+    
     const result = await coneccionDB.query(sqlQry)
     if(result.rows.length>0){
             res.status(201).send(result.rows)
@@ -124,6 +141,19 @@ export const getAlumnosPorUbiPropuesta = async (req, res) => {
         console.log(error)
     }
 }
+//ver alumnos_info
+
+export const getAlumnos_Info= async (req, res)=>{
+    let sqlstr=` select * from fce_per.alumnos_info ai order by ubicacion, propuesta,plan,aniocursada `
+
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 
 //alumnos por ubicacion - propuesta
 export const getAlumnosPorUbiPropuestaSVP = async (req, res) => {
@@ -166,9 +196,11 @@ export const getAlumnosPorUbiPropuestaProvisorios = async (req, res) => {
 
 export const getAlumnosPorUbiProvisorios = async (req, res) => {
 
-    let anioac=2024
-    let sqlqy = ` select case ubicacion WHEN 1 THEN 185 WHEN 2 THEN 186 WHEN 3 THEN 2714 WHEN 4 THEN 2970 END as codinst,count(propuesta)  
-    from negocio.sga_alumnos where legajo isnull and calidad='A' and propuesta in (2,3,6,7,8) and anio_academico=${anioac} group by ubicacion order by ubicacion`
+    const {anioac} = req.params
+    let sqlqy = ` select case alu.ubicacion WHEN 1 THEN 185 WHEN 2 THEN 186 WHEN 3 THEN 2714 WHEN 4 THEN 2970 END as codinst,count(alu.propuesta)  
+    from negocio.sga_alumnos alu
+    inner join negocio.sga_propuestas_aspira spa on spa.persona=alu.persona and spa.propuesta=alu.propuesta
+    where legajo isnull and calidad='A' and alu.propuesta in (2,3,6,7,8) and anio_academico=${anioac} and spa.situacion_asp  in (1,2) group by alu.ubicacion order by alu.ubicacion`
     try {
         const resu = await coneccionDB.query(sqlqy)
         res.send(resu.rows)
@@ -202,7 +234,8 @@ export const getAlumnosPorUbi = async (req, res) => {
 
 export const getAlumnosAnioCursada= async (req, res)=>{
     let sqlstr=` select ubicacion,case propuesta when 1 then 'CPN' when 2 then 'LA' when 3 then 'LE' when 6 then 'LNRG' when 7 then 'LLO'when 8 then 'CP' end as carerra
-    , case plan when 5 then '98' when 6 then '98' when 7 then '98' when 10 then '1' when 11 then '1' when 12 then '19' when 13 then '19' when 14 then '19' end as planl, aniocursada, count(aniocursada) from fce_per.alumnos_info ai
+    , case plan when 5 then '98' when 6 then '98' when 7 then '98' when 10 then '1' when 11 then '1' when 12 then '19' when 13 then '19' when 14 then '19' when 17 then '2' end as planl, aniocursada, count(aniocursada) from fce_per.alumnos_info ai
+    where calidad = 'A'
     group by ubicacion ,propuesta ,plan,aniocursada order by ubicacion, propuesta,plan,aniocursada `
 
     try {
@@ -306,12 +339,13 @@ const traerEgresadosCohorte=async (anioI, sede, carrera,i,tipoI)=>{
 export const getEvolucionCohorte = async (req, res) => {
 
     const { anioI, sede, carrera, anioFC, tipoI } = req.params
+   
 
     let aniototal = []
 
     try {
         for (let i = Number(anioI) + 1; i < Number(anioFC) + 1; i++) {
-
+            console.log(anioI, sede, carrera, i, tipoI)
             let totalI = await TreinscriptosPorAnioCohorte(anioI, sede, carrera, i, tipoI)
             let egresados=await traerEgresadosCohorte(anioI, sede, carrera, i, tipoI)
             //console.log(egresados)
@@ -328,3 +362,349 @@ export const getEvolucionCohorte = async (req, res) => {
 }
 
 
+export const consultaQuery=async (req, res) => {
+    const {sqlstr} = req.params;
+    //console.log(sqlstr)
+  
+    if (!sqlstr) {
+      return res.status(400).json({ error: "Consulta no proporcionada" });
+    }
+  
+    try {
+      const result = await coneccionDB.query(sqlstr);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error ejecutando consulta:", error);
+      res.status(500).send({ error: "Error en la consulta SQL" });
+    }
+  };
+
+
+  // controllers/alumnosController.js
+
+export const getResumenAlumnos = async (req, res) => {
+    //const { pool } = require('../db'); // Asegúrate que tenés un archivo db.js que exporta el pool
+  
+    const query = ` 
+      WITH alumnos_filtrados AS (
+  SELECT *
+  FROM fce_per.alumnos_info
+  WHERE calidad = 'A'
+    AND propuesta NOT IN (6)
+    AND coef_tcarrera NOT IN (0, 100) -- Ahora filtramos 0 y 100
+)
+SELECT
+   CASE ubicacion 
+            WHEN 1 THEN 'MZA' 
+            WHEN 2 THEN 'SRF' 
+            WHEN 3 THEN 'GALV' 
+            WHEN 4 THEN 'ESTE' 
+          END AS ubicacion,
+
+CASE
+    WHEN propuesta = 1 THEN 'CPN'
+    WHEN propuesta = 2 THEN 'LA'
+    WHEN propuesta = 3 THEN 'LE'
+    WHEN propuesta = 7 THEN 'LLO'
+    WHEN propuesta = 8 THEN 'CP'
+    ELSE 'Otra'
+  END AS propuesta,
+  
+  aniocursada,
+  COUNT(*) AS cantidad_alumnos,
+  ROUND(AVG(coef_tcarrera), 2) AS promedio_coef_tcarrera,
+  ROUND(AVG(completado), 2) AS promedio_completado,
+  ROUND(AVG(perdidasreg), 2) AS promedio_perdidas_reg,
+  ROUND(AVG(promedioca), 2) AS promedio_promedioca
+FROM alumnos_filtrados
+GROUP BY propuesta, ubicacion, aniocursada
+
+UNION ALL
+
+SELECT
+  'TOTAL' AS propuesta,
+  NULL AS ubicacion,
+  NULL AS aniocursada,
+  COUNT(*) AS cantidad_alumnos,
+  ROUND(AVG(coef_tcarrera), 2) AS promedio_coef_tcarrera,
+  ROUND(AVG(completado), 2) AS promedio_completado,
+  ROUND(AVG(perdidasreg), 2) AS promedio_perdidas_reg,
+  ROUND(AVG(promedioca), 2) AS promedio_promedioca
+  
+FROM alumnos_filtrados
+ORDER BY 
+  propuesta NULLS LAST,
+  ubicacion NULLS LAST,
+  aniocursada NULLS LAST;
+
+
+    `;
+  
+    try {
+      const { rows } = await coneccionDB.query(query);
+      res.status(200).json(rows);
+    } catch (error) {
+      console.error('Error ejecutando la consulta:', error);
+      res.status(500).json({ message: 'Error ejecutando la consulta', error: error.message });
+    }
+  };
+  //////////
+  ////////////
+
+  const obtenerReinscripcion = async (alumno, anio) => {
+    try {
+      const sql = `
+        SELECT COUNT(*) AS reinscripcion
+        FROM negocio.sga_reinscripciones
+        WHERE alumno = $1 AND anio_academico = $2
+      `;
+  
+      const result = await coneccionDB.query(sql, [alumno, anio]);
+      return result.rows[0].reinscripcion;
+    } catch (error) {
+      console.error("Error en obtenerReinscripcion:", error);
+      return 0;
+    }
+  } //////
+
+  const actividadTroncal =async(anio,alumno)=>{
+    try {
+      
+    await coneccionDB.query('SET search_path TO negocio');
+    let nro=0
+    
+    let sqlstr=`SELECT COUNT(*) as nrotroncal FROM negocio.vw_hist_academica  WHERE resultado='A' AND alumno =${alumno}`
+    if (anio===3){
+      sqlstr += ` AND actividad_codigo in ('02370', '02375')`
+      console.log(sqlstr)
+       const resu = await coneccionDB.query(sqlstr)
+       if (resu.rows[0].nrotroncal > 1){
+        return true
+       }else{return false}
+  
+    }else if(anio===2){
+      sqlstr += ` AND actividad_codigo in ('02270', '02275')`
+      console.log(sqlstr)
+      const resu = await coneccionDB.query(sqlstr)
+      if (resu.rows[0].nrotroncal > 1){
+        return true
+       }else{return false}
+  
+    }else if(anio===1){
+      sqlstr += ` AND actividad_codigo in ('02170', '02175')`
+      
+      const resu = await coneccionDB.query(sqlstr)
+      if (resu.rows[0].nrotroncal > 1){
+          return true
+      }else{return false}
+    }
+   } catch (error) {
+     console.log(error)   
+    }
+  }
+  //////////
+  //////////
+  async function calcularAnio19 (car, uno, dos, tres, cuatro,alumno) {
+    try {
+      const carInt = parseInt(car, 10);
+      
+      // Caso para contador: car == 8 o car == 450
+      if (carInt === 8 || carInt === 450) {
+        if (uno > 8 && dos > 9 && tres > 8 && cuatro > 3) {
+          return 5;
+        }
+        if (uno > 8 && dos > 9 && tres > 3) {
+          return 4;
+        }
+        if (uno > 8 && dos > 3) {
+          return 3;
+        }
+        if (uno > 3) {
+          return 2;
+        } else {
+          return 1;
+        }
+      }
+  
+      // Caso para la: car == 2 o car == 386
+      if (carInt === 2 || carInt === 386) {
+        if (uno > 8 && dos > 8 && tres > 9 && cuatro > 3) {
+          return 5;
+        }
+        if (uno > 8 && dos > 8 && tres > 3) {
+          return 4;
+        }
+        if (uno > 8 && dos > 3) {
+          return 3;
+        }
+        if (uno > 3) {
+          return 2;
+        } else {
+          return 1;
+        }
+      }
+      if (carInt === 3 || carInt === 464) {
+        if (uno > 8 && dos > 8 && tres > 7 && cuatro > 3) {
+          return 5;
+        }
+        if (uno > 8 && dos > 8 && tres > 3) {
+          return 4;
+        }
+        if (uno > 8 && dos > 3) {
+          return 3;
+        }
+        if (uno > 3) {
+          return 2;
+        } else {
+          return 1;
+        }
+      }
+  
+      if (carInt===7 || carInt===3905){
+      
+        if (uno > 9 && dos > 9 && tres > 5 && await actividadTroncal(3,alumno)) {
+          
+          return 4;
+        }
+        if (uno > 9 && dos > 5 && await actividadTroncal(2,alumno)) {
+          return 3;
+        }
+        if (uno > 5 && await actividadTroncal(1,alumno)) {
+          return 2;
+        } else {
+          return 1;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return 1
+    }
+  }
+  
+  ////////
+
+  async function obtenerMateriasPorAnio(alumno, plan, fecha) {
+    const condicionActividad = plan === 17
+      ? `actividad_codigo LIKE '02%'`
+      : `actividad_codigo LIKE '04%'`;
+  
+    try {
+      await coneccionDB.query("SET search_path TO negocio");
+  
+      const sql = `
+        SELECT ele.anio_de_cursada
+        FROM vw_hist_academica AS ha
+        INNER JOIN sga_elementos_plan AS ele 
+          ON ele.elemento_revision = ha.elemento_revision AND ele.plan_version = ha.plan_version
+        WHERE ${condicionActividad}
+          AND CAST(fecha AS DATE) <= $1
+          AND resultado = 'A'
+          AND alumno = $2
+      `;
+      
+      const result = await coneccionDB.query(sql, [fecha, alumno]);
+  
+      let uno = 0, dos = 0, tres = 0, cuatro = 0;
+      for (const row of result.rows) {
+        const anio = row.anio_de_cursada;
+        if (anio === 1) uno++;
+        else if (anio === 2) dos++;
+        else if (anio === 3) tres++;
+        else if (anio === 4) cuatro++;
+      }
+  
+      return { uno, dos, tres, cuatro };
+    } catch (error) {
+      console.error("Error en obtenerMateriasPorAnio:", error);
+      return { uno: 0, dos: 0, tres: 0, cuatro: 0 };
+    }
+  }
+  
+//////////
+/////////
+    async function obtenerMateriasPorAnioLLO(alumno, fecha) {
+       
+        try {
+        
+        await coneccionDB.query("SET search_path TO negocio");
+    
+        const sql = `
+            SELECT count(*)as aprobadas
+            FROM vw_hist_academica AS ha
+            WHERE CAST(fecha AS DATE) <= $1
+            AND resultado = 'A'
+            AND alumno = $2
+        `;
+    
+        const result = await coneccionDB.query(sql, [fecha, alumno]);
+        let materiasAnio = result.rows[0].aprobadas;
+        console.log(materiasAnio)
+        let aniocursada = 0;
+        if (materiasAnio < 5) aniocursada = 1;
+        else if (materiasAnio < 13) aniocursada = 2;
+        else if (materiasAnio < 23) aniocursada = 3;
+        else aniocursada = 4;
+
+    
+        return aniocursada; ;
+
+        } catch (error) {
+        console.error("Error en obtenerMateriasPorAnio:", error);
+        return 1;
+        }
+    }   
+  /////////
+  export const calcularAniosCursada = async (req, res) => {
+    const {fecha, anio} = req.params; // Fecha por parámetro o default
+  
+    try {
+      const sqlSelect = `
+        SELECT alumno, propuesta, plan
+        FROM fce_per.alumnos_ingresantes
+        WHERE plan IN (17)
+      `;
+      const result = await coneccionDB.query(sqlSelect);
+      const resultados = [];
+  
+      for (const row of result.rows) {
+        const { alumno, propuesta, plan } = row;
+  
+        const { uno, dos, tres, cuatro } = await obtenerMateriasPorAnio(alumno, plan, fecha);
+       // const aniocursada = await calcularAnio19(propuesta, uno, dos, tres, cuatro, alumno);
+        //const aniocursada = await obtenerMateriasPorAnioLLO(alumno, fecha);
+        //resultados.push({ alumno, aniocursada });
+        const reinscripcion=await obtenerReinscripcion(alumno,anio)
+        /*
+        const sqlUpdate = `
+          UPDATE fce_per.alumnos_ingresantes
+          SET a_2025 = $1
+          WHERE alumno = $2
+        `;
+        await coneccionDB.query(sqlUpdate, [aniocursada, alumno]);
+        */
+       /*reinscripcio*/
+        console.log(alumno, reinscripcion)
+         const sqlUpdate = `
+          UPDATE fce_per.alumnos_ingresantes
+          SET r_2025 = $1
+          WHERE alumno = $2
+        `;
+        await coneccionDB.query(sqlUpdate, [reinscripcion, alumno]);
+        
+      }
+  
+      res.json({
+        total: resultados.length,
+        registros: resultados
+      });
+    } catch (error) {
+      console.error("Error al calcular años de cursada:", error);
+      res.status(500).send("Error en el servidor");
+    }
+  };
+  
+
+  /////////
+
+
+  //////////

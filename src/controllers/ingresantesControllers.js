@@ -1,6 +1,5 @@
 import coneccionDB from "../database.js";
 
-
 //total ingresantes por tipo ingreso
 const countIngresantesTI = async (anio) => {
 
@@ -160,6 +159,63 @@ export const getIngresantesAnioSedePropTing = async (req, res) => {
     } catch (error) {
         console.log(error)
     }
+
+
+}
+
+
+export const getIngresantesAnioUtils =async (req,res)=>{
+    
+    const sqlstr=`select spa.propuesta, count(*) as total
+            FROM negocio.sga_propuestas_aspira spa
+            INNER JOIN negocio.sga_alumnos sa ON sa.persona = spa.persona AND sa.propuesta = spa.propuesta
+            WHERE anio_academico = $1
+              AND sa.ubicacion in (1,2,4)
+              AND spa.tipo_ingreso in (1,3)
+              AND situacion_asp IN (1, 2)
+              AND sa.legajo IS NOT null
+              and sa.propuesta in (2,3,7,8)
+             group by spa.propuesta
+`
+}
+
+
+
+
+
+//listado de ingresantes anio matriculados y provisarios
+
+export const getListIngresantesAnio = async (req,res)=>{
+    
+    const {anio, estado}=req.params
+    let sqlstr=''
+    
+    
+    if (estado==='M'){
+
+        sqlstr=`select legajo,mp.apellido , mp.nombres, alumno,spa.propuesta, spa.ubicacion,tipo_ingreso from negocio.sga_propuestas_aspira spa
+            inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+            inner join negocio.mdp_personas mp on mp.persona=spa.persona
+            where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) 
+            and not tipo_ingreso is null and not sa.legajo is null`
+    }else{
+        
+        sqlstr=`select legajo,mp.apellido , mp.nombres, alumno,spa.propuesta, spa.ubicacion,tipo_ingreso from negocio.sga_propuestas_aspira spa
+        inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+        inner join negocio.mdp_personas mp on mp.persona=spa.persona
+        where anio_academico =${anio} and spa.propuesta in (2,3,6,7,8) and situacion_asp in (1,2) 
+        and not tipo_ingreso is null and sa.legajo is null`
+    }
+
+
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    } catch (error) {
+        console.log(error)
+    }
+
+
 
 
 }

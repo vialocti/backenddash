@@ -1,5 +1,10 @@
 //import { Connection } from 'pg'
+//const coneccionDB = require('../database.js');
+//const { format } = require('@fast-csv/format');
+
 import coneccionDB from '../database.js'
+import  { format } from '@fast-csv/format';
+
 /*
 export const nameFuncion = async (req, res) => {
 
@@ -29,7 +34,7 @@ export const getAlumnosInfoSedePropuestaplanversion  = async (req, res) => {
     const {ubicacion, propuesta, plan, planversion,anioipro} = req.params
     
 
-    let sqlstr = `select alumno,ROUND(SQRT(CAST(legajo AS numeric)), 4) as legajo,ubicacion,propuesta,plan,plan_version ,concat(upper(substring(md5(apellido),1,8)) ,', ',upper(substring(md5(nombres),1,16))) as estudiante ,anio_ingreso_pro ,anio_ingreso_fac ,aprobadas,reprobadas,regularesap ,promedioca, promediosa ,completado,coef_tcarrera,por_relativo  from fce_per.alumnos_info ai 
+    let sqlstr = `select alumno,legajo,ubicacion,propuesta,plan,plan_version ,concat(apellido,', ',nombres) as estudiante ,anio_ingreso_pro ,anio_ingreso_fac ,aprobadas,reprobadas,regularesap ,promedioca, promediosa ,completado,coef_tcarrera,por_relativo  from fce_per.alumnos_info ai 
     where ubicacion=${ubicacion} and propuesta=${propuesta} and plan=${plan} and plan_version =${planversion} and anio_ingreso_pro =${anioipro} order by anio_ingreso_fac 
     `
    console.warn(sqlstr)
@@ -96,6 +101,95 @@ export const traerCantidadInscriptosTotalfceper = async (req, res) =>{
 }
 
 
+
+//////PROCESAR INDICES ACTIVIDADES -> A INDICES TOAL SEDES
+/////2da parte procesar datos
+
+const grabarIndiceTotal= async(registro)=>{
+    const {anio, sede,periodo ,totai,totalr,totallb,totallibas,tpromo,taprob1, taprob2,indicecur,indiceccorto, indiceclargo} = registro
+
+    
+    try{
+    
+        let sqlI = 'INSERT INTO fce_per.dash_indices_total (anio_academico,sede,periodo,"totalInscriptos","totalRegulares","totalDesaprobados","totalAusentes","totalPromocionados",totalaprobadascc,totalaprobadascl,promedioindicecursada,promedioindicecorto,promedioindicelargo) values('
+    sqlI=sqlI + anio + "," + sede +",'" + periodo + "'," + totai + "," + totalr + "," +  totallb + "," +  totallibas + "," + tpromo + "," + taprob1 + ", " + taprob2 + "," + indicecur +   "," + indiceccorto + ","  + indiceclargo + ")"
+    console.log(sqlI)
+     const result = await coneccionDB.query(sqlI)
+     if(result.rowCount===1){
+        return "Registro guardado"
+     }
+     
+    //console.log(result.rowCount)
+    }catch(error){
+      
+      //console.log(error)
+      return "Error servicio, posible clave duplicada"
+    }
+  
+  
+  }
+
+
+const procesarDatosIndices=async (datosI,anio,sede)=>{
+    
+    
+    let relapromo=datosI.tpromocionados / datosI.toti
+    let relaregu=(parseInt(datosI.tpromocionados) + parseInt(datosI.tregu)) / datosI.toti
+    let relaccorto=datosI.tapro1 / datosI.toti
+    let relaclargo=datosI.tapro2 / datosI.toti
+    console.log(relapromo, relaccorto, relaclargo,relaregu)
+    let proindicecursada=relaregu * 0.7 + relapromo * 0.3
+    let proindiceccorto=relaregu * 0.7 + relaccorto * 0.3
+    let proindiceclargo=relaregu * 0.7 + relaclargo * 0.3
+
+    try {
+        const datosp={
+        anio:anio,
+        sede:sede,
+        periodo:'A',
+        totai:datosI.toti,
+        totalr:datosI.tregu,
+        totallb:datosI.tlibre,
+        totallibas:datosI.tlibreast,
+        tpromo:datosI.tpromocionados,
+        taprob1:datosI.tapro1,
+        taprob2:datosI.tapro2,
+        indicecur:proindicecursada.toFixed(3),
+        indiceccorto:proindiceccorto.toFixed(3),
+        indiceclargo:proindiceclargo.toFixed(3) 
+    }
+    return datosp
+    } catch (error) {
+        console.log(error)
+    }
+
+}
+
+
+/////inicio
+export const procesarIndicesTot = async (req, res) =>{
+
+    const {anio,sede} = req.params;
+      let sqlstr=`select sum(total_inscriptos) as toti, sum(regulares) as tregu, sum(reprobados ) as tlibre,
+        sum(ausentes) as tlibreast, sum(promocionados) as tpromocionados, sum(aprobadase1 ) as tapro1, sum(aprobadase2 ) as tapro2, avg(relacion_regular )
+        from fce_per.dash_actividad_resultados dar where anio_academico=$1 and sede=$2`
+    try {
+       
+        const resu = await coneccionDB.query(sqlstr,[anio,sede])
+        const resultado = await procesarDatosIndices(resu.rows[0],anio,sede)
+        const resuinsert = await grabarIndiceTotal(resultado)
+        //console.log(resuinsert)
+
+        res.send({message:resuinsert})
+    } catch (error) {
+        console.log(error)   
+    }
+}
+
+
+//////
+
+
 export const traerDatosHistoricosIndicesTotalPeriodo=async (req,res)=>{
     const {anioI, anioF,sede} = req.params;
     
@@ -155,4 +249,504 @@ export const traerIndiceTotalAnios = async(req,res)=>{
 }
 
 
+
+export const getIndicesAlumnos = async (req, res) => {
+  try {
+    const query = `
+      SELECT
+        CASE 
+          WHEN ubicacion = 1 THEN 'MZA'
+          WHEN ubicacion = 2 THEN 'SRF'
+          WHEN ubicacion = 4 THEN 'EST'
+        END AS sede,   
+        CASE
+          WHEN propuesta = 1 THEN 'CPN' 
+          WHEN propuesta = 2 THEN 'LA' 
+          WHEN propuesta = 3 THEN 'LE'
+          WHEN propuesta = 7 THEN 'LLO'
+          WHEN propuesta = 8 THEN 'CP'
+          ELSE 'Otra'
+        END AS carrera,
+        plan,
+        aniocursada,
+        CASE 
+          WHEN coef_tcarrera IN (0, 100) THEN 'No calculado'
+          WHEN coef_tcarrera <= 1.3 THEN '<= a 1,3'
+          WHEN coef_tcarrera > 1.3 THEN '> a 1,3'
+        END AS rango_coef,
+        COUNT(*) AS cantidad_alumnos,
+        ROUND(AVG(completado), 2) AS promedio_completado,
+        ROUND(AVG(coef_tcarrera), 2) AS promedio_coeficiente,
+        ROUND(MIN(coef_tcarrera), 2) AS min_coeficiente,
+        ROUND(MAX(coef_tcarrera), 2) AS max_coeficiente,
+        ROUND(STDDEV_POP(coef_tcarrera), 4) AS desvio_tipo
+      FROM fce_per.alumnos_info
+      WHERE propuesta IN (1, 2, 3, 7, 8)
+      GROUP BY ubicacion, propuesta, plan, aniocursada, rango_coef
+      ORDER BY ubicacion, propuesta, plan, aniocursada, rango_coef;
+    `;
+
+    const result = await coneccionDB.query(query);
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error ejecutando getIndicesAlumnos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+
+
+
+
+
+ ////tema alumnos info comisiones propuestas
+ // controllers/comisionesController.js
+
+ async function obtenerAnioDeCursada(plan_version, elemento) {
+  const result = await coneccionDB.query(`
+    SELECT sep.anio_de_cursada
+    FROM negocio.sga_elementos_plan sep
+    INNER JOIN negocio.sga_elementos_revision ser ON ser.elemento_revision = sep.elemento_revision
+    WHERE sep.plan_version = $1 AND ser.elemento = $2
+    LIMIT 1
+  `, [plan_version, elemento]);
+
+  return result.rows.length ? result.rows[0].anio_de_cursada : null;
+}
+
+
+// Función: Obtener alumnos por comisión y plan_version
+async function getAlumnosPorComisionYPlanVersion(comision, plan_version) {
+  const result = await coneccionDB.query(`
+    SELECT alumno 
+    FROM negocio.sga_insc_cursada 
+    WHERE comision = $1 AND plan_version = $2
+  `, [comision, plan_version]);
+  return result.rows.map(r => r.alumno);
+}
+
+// Función: Contar alumnos aprobados por instancia
+async function contarPorActa(comision, alumnosIds, instancia) {
+  if (alumnosIds.length === 0) return 0;
+
+  const result = await coneccionDB.query(`
+    SELECT COUNT(*) 
+    FROM negocio.sga_actas_detalle sad
+    INNER JOIN negocio.sga_actas sa ON sa.id_acta = sad.id_acta 
+    WHERE sa.comision = $1 
+      AND sad.rectificado = 'N' 
+      AND sad.instancia = $2 
+      AND sad.resultado = 'A'
+      AND sad.alumno = ANY($3::int[])
+  `, [comision, instancia, alumnosIds]);
+
+  return parseInt(result.rows[0].count, 10);
+}
+
+// Función principal
+
+
+
+// Reutilizamos las funciones anteriores
+// ...
+
+export const exportComisionesCSV = async (req, res) => {
+  const { anio } = req.params;
+  const mapaPropuestas = {
+    57: 'LA',
+    56: 'CPN',
+    65: 'CPN',
+    67: 'LE',
+    68: 'LE',
+    46: 'LE',
+    73: 'LE',
+    82: 'CP',
+    77: 'CP',
+    69: 'CP',
+    45:'LLO',
+    49: 'LE',
+    50:'CP',
+    51: 'LA',
+    59: 'LLO',
+    79: 'LLO',
+    75: 'LLO',
+    80: 'LLO',
+    81: 'CP',
+    70: 'LA',
+    66: 'LA',
+    72: 'LA',
+    74: 'LE',
+    76: 'LE'
+  };
+  
+
+  try {
+    const resumen = await coneccionDB.query(`
+      SELECT DISTINCT 
+        case sc.ubicacion
+          when 1 then 'MZA'
+          when 2 then 'SRF'
+          when 4 then 'EST'
+        end as ubicacion,
+        sic.plan_version, 
+        sic.comision,
+        se.elemento,
+        COUNT(sic.alumno) AS cantidad
+      FROM negocio.sga_insc_cursada sic 
+      INNER JOIN negocio.sga_comisiones sc ON sc.comision = sic.comision
+      INNER JOIN negocio.sga_elementos se ON se.elemento = sc.elemento 
+      INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo
+      INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
+      INNER JOIN negocio.sga_periodos_genericos spgt ON spgt.periodo_generico = sp.periodo_generico 
+      WHERE sp.anio_academico = $1
+        AND NOT sc.nombre LIKE 'V%'
+        AND NOT sc.nombre LIKE '%Recur%'
+        AND NOT sc.nombre LIKE '%VIRT%'
+        AND NOT sic.plan_version IN (10, 47)
+      GROUP BY sc.ubicacion,sic.plan_version, sic.comision, se.elemento
+    `, [anio]);
+
+    const detalle = await Promise.all(resumen.rows.map(async ({ ubicacion,plan_version, comision, elemento, cantidad }) => {
+      const alumnos = await getAlumnosPorComisionYPlanVersion(comision, plan_version);
+      const regulares = await contarPorActa(comision, alumnos, 1);
+      const promocionados = await contarPorActa(comision, alumnos, 2);
+      const anio_cursada = await obtenerAnioDeCursada(plan_version, elemento);
+      const propuesta = mapaPropuestas[plan_version] || 'Desconocida';
+
+
+
+      return {
+        ubicacion,
+        plan_version,
+        propuesta,
+        comision,
+        elemento,
+        cantidad: parseInt(cantidad, 10),
+        regulares,
+        promocionados,
+        anio_cursada 
+      };
+    }));
+
+    res.setHeader('Content-Disposition', `attachment; filename="detalle_comisiones_${anio}.csv"`);
+    res.setHeader('Content-Type', 'text/csv');
+
+    const csvStream = format({ headers: true });
+    csvStream.pipe(res);
+    detalle.forEach(row => csvStream.write(row));
+    csvStream.end();
+
+  } catch (error) {
+    console.error("Error al exportar CSV:", error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+
+
+
+//funcion para obtener anio de cursada
+function calcularAnio(car, cantimat) {
+  const carrera = parseInt(car, 10);
+  const cantidad = parseInt(cantimat, 10);
+  let anioc = '';
+
+  try {
+    if ([1, 451].includes(carrera)) { // Contador
+      if (cantidad < 4) anioc = '1';
+      else if (cantidad < 12) anioc = '2';
+      else if (cantidad < 19) anioc = '3';
+      else if (cantidad < 26) anioc = '4';
+      else anioc = '5';
+    }
+
+    else if ([3, 464].includes(carrera)) { // Economía
+      if (cantidad < 4) anioc = '1';
+      else if (cantidad < 10) anioc = '2';
+      else if (cantidad < 18) anioc = '3';
+      else if (cantidad < 26) anioc = '4';
+      else anioc = '5';
+    }
+
+    else if ([2, 386].includes(carrera)) { // Administración
+      if (cantidad < 4) anioc = '1';
+      else if (cantidad < 13) anioc = '2';
+      else if (cantidad < 22) anioc = '3';
+      else anioc = '4';
+    }
+
+    else if ([7, 3905].includes(carrera)) { // Logística
+      if (cantidad < 5) anioc = '1';
+      else if (cantidad < 13) anioc = '2';
+      else if (cantidad < 23) anioc = '3';
+      else anioc = '4';
+    }
+
+    else if ([6, 8216].includes(carrera)) { // LNRG
+      if (cantidad < 8) anioc = '1';
+      else if (cantidad < 15) anioc = '2';
+      else anioc = '3';
+    }
+
+    return anioc;
+
+  } catch (error) {
+    console.error('Error en calcularAnio:', error);
+    return '';
+  }
+}
+
+
+export async function actualizarAniosCursada() {
+  try {
+    const { rows } = await coneccionDB.query(`
+      SELECT alumno, propuesta, aprobadas
+      FROM fce_per.alumnos_info 
+      WHERE propuesta IN (1, 2, 3, 7, 8)
+      AND plan IN ( 5, 6, 7, 11) 
+      
+      `);
+    console.log('Cantidad de registros a actualizar:', rows.length);
+
+    for (const { alumno, propuesta, aprobadas } of rows) {
+      const anio = calcularAnio(propuesta, aprobadas);
+      console.log(anio, propuesta, aprobadas);
+      if (anio) {
+        await coneccionDB.query(`
+          UPDATE fce_per.alumnos_info
+          SET aniocursada = $1
+          WHERE alumno = $2
+        `, [anio, alumno]);
+      }
+    }
+
+    console.log('Actualización completa de aniocursada.');
+
+  } catch (error) {
+    console.error('Error al actualizar aniocursada:', error);
+  }
+}
+
+//perdidda de regularidad
+
+
+
+//perdidda de regularidad
+
+async function tuvoPerdidaRegularidad(alumnoId, anio) {
+  const result = await coneccionDB.query(`
+    SELECT COUNT(*) AS perdidareg
+    FROM negocio.sga_perdida_regularidad
+    WHERE alumno = $1 AND anio_academico = $2
+  `, [alumnoId, anio]);
+
+  return parseInt(result.rows[0].perdidareg, 10);
+}
+
+
+export async function actualizarPerdidaRegularidad(req,res) {
+  
+  const {aniop}=req.params
+  try {
+    const { rows } = await coneccionDB.query(`
+      SELECT alumno
+      FROM fce_per.alumnos_info 
+      WHERE propuesta IN (1, 2, 3, 7, 8)
+         
+      `);
+    //console.log('Cantidad de registros a actualizar:', rows.length);
+
+    for (const { alumno } of rows) {
+      const perdioRegularidad = await tuvoPerdidaRegularidad(alumno, aniop);
+      //console.log(aniop,perdioRegularidad, alumno);
+      await coneccionDB.query(`
+        UPDATE fce_per.alumnos_info
+        SET perdidasreg = $1
+        WHERE alumno = $2
+      `, [perdioRegularidad, alumno]);
+      
+    }
+
+    console.log('Actualización completa de perdida regularidad.');
+
+  } catch (error) {
+    console.error('Error al actualizar perdida:', error);
+  }
+}
+///analiss
+
+//funcion para obtener ingresantes por sede propuesta y anio  
+async function getIngresantes(sede, propuesta, anioI) {
+  
+  let sqlstr=`select alumno from negocio.sga_propuestas_aspira spa 
+  inner join negocio.sga_alumnos sa on sa.persona=spa.persona and sa.propuesta=spa.propuesta 
+  where  sa.ubicacion=${sede} and anio_academico =${anioI} and spa.propuesta= ${propuesta}
+  and spa.tipo_ingreso in (1,3) and situacion_asp in (1,2) and not sa.legajo is null`
+  //console.log(sqlstr)
+  const result = await coneccionDB.query(sqlstr);
+  
+
+ // console.log('Alumnos ingresantes:', result.rows);
+  return result.rows.map(r => r.alumno);
+
+}
+//funcion para obtener reinscripciones por alumno y anio
+
+async function getReinscripciones(alumno,anio){
+  const result = await coneccionDB.query(`
+    SELECT COUNT(*) AS reinscripto
+    FROM negocio.sga_reinscripciones
+    WHERE alumno = $1 AND anio_academico = $2
+  `, [alumno, anio]);
+
+  return parseInt(result.rows[0].reinscripto, 10);
+} 
+
+
+//materias aprobadas por alumno y anio  
+async function getMateriasAprobadas(alumno, anio) {
  
+  const resu = await coneccionDB.query(`set search_path=negocio`)  
+  let sqlstr=`select count(*) as materias_aprobadas from negocio.vw_hist_academica vha where resultado = 'A' and alumno=$1 and anio_academico < $2`
+  const result = await coneccionDB.query(sqlstr, [alumno, anio]);
+
+ 
+  return parseInt(result.rows[0].materias_aprobadas, 10);
+}
+/////// analisis de reinscripciones /////////
+function contarReinscripcionesAcumuladas(analisisAlumnos) {
+  const anios = Object.keys(
+    analisisAlumnos[0]?.reinscripciones
+      .split(', ')
+      .reduce((acc, entry) => {
+        const [anio] = entry.split(':');
+        acc[anio] = true;
+        return acc;
+      }, {})
+  );
+
+  const resultado = {};
+  let alumnosActivos = [...analisisAlumnos]; // Comenzamos con todos
+
+  for (const anio of anios) {
+    let reinscriptos = 0;
+
+    const nuevosActivos = [];
+
+    for (const alumno of alumnosActivos) {
+      const dato = alumno.reinscripciones
+        .split(', ')
+        .find(r => r.startsWith(anio + ':'));
+
+      if (!dato) continue;
+
+      const valor = dato.split(':')[1];
+
+      if (valor === '1') {
+        reinscriptos += 1;
+        nuevosActivos.push(alumno); // Solo estos continúan al próximo año
+      }
+    }
+
+    resultado[anio] = {
+      total: alumnosActivos.length,
+      reinscriptos,
+      porcentaje: ((reinscriptos / alumnosActivos.length) * 100).toFixed(2) + '%'
+    };
+
+    alumnosActivos = nuevosActivos; // Solo siguen los que se reinscribieron
+  }
+
+  return resultado;
+}
+
+//funcion para calcular anio de cursada     
+
+
+//calcular anio de cursada
+async function calcularAnioCursada(propuesta, materiasAnio) {
+  console.log('materiasAnio:', propuesta, 'typeof:', typeof propuesta);
+
+    let aniocursada = 1;
+    if (parseInt(propuesta) === 2) { // Administración  
+        if (materiasAnio < 4) aniocursada = 1;
+        else if (materiasAnio < 13) aniocursada = 2;
+        else if (materiasAnio < 22) aniocursada = 3;
+        else if (materiasAnio < 26) aniocursada = 4;
+        else aniocursada = 5;
+
+    }else if (parseInt(propuesta) === 3) { // Economía
+      if (materiasAnio < 4) aniocursada = 1;
+      else if (materiasAnio < 10) aniocursada = 2;
+      else if (materiasAnio < 18) aniocursada = 3;
+      else if (materiasAnio < 26) aniocursada = 4;
+      else aniocursada = 5;   
+        
+    } else if (parseInt(propuesta) === 7) { // Logística
+        
+        if (materiasAnio < 5) aniocursada = 1;
+        else if (materiasAnio < 13) aniocursada = 2;
+        else if (materiasAnio < 23) aniocursada = 3;
+        else aniocursada = 4;
+
+    } else if (parseInt(propuesta) === 8) { // Contador Publico
+        if (materiasAnio < 4) aniocursada = 1;
+        else if (materiasAnio < 12) aniocursada = 2;
+        else if (materiasAnio < 19) aniocursada = 3;
+        else if (materiasAnio < 26) aniocursada = 4;
+        else aniocursada = 5;  
+    }
+  return aniocursada;
+}
+
+
+
+
+//funcion principal controllador
+export async function getAnalisisAlumnos(req, res) {
+ 
+  const { anioI, anioF, sede, propuesta, } = req.params;
+
+  try {
+    const alumnos = await getIngresantes(sede, propuesta, anioI);
+    const resultados = [];
+   //console.log('Alumnos:', alumnos);
+    for (const alumno of alumnos) {
+      const reinscripciones = [];
+      const materiasPorAnio = [];
+      const anioCursadaPorAnio = [];
+
+      for (let anio = parseInt(anioI) + 1; anio <= parseInt(anioF); anio++) {
+        const reinscripto = await getReinscripciones(alumno, anio);
+        reinscripciones.push({ anio, reinscripto });
+        const materiasAnio = await getMateriasAprobadas(alumno, anio); // supondremos que filtra por año
+        materiasPorAnio.push({ anio, materiasAnio });
+        const anioCursada = await calcularAnioCursada(propuesta, materiasAnio); // calcula en base a materias acumuladas
+        anioCursadaPorAnio.push({ anio, anioCursada })
+      
+      }
+
+     //console.log(materiasPorAnio);
+      //const anioCursada = calcularAnioCursada(propuesta, materiasAprobadas);
+
+      resultados.push({
+        alumno,
+        sede,
+        propuesta,
+        reinscripciones: reinscripciones.map(r => `${r.anio}:${r.reinscripto}`).join(', '),
+        materiasPorAnio: materiasPorAnio.map(m => `${m.anio}:${m.materiasAnio}`).join(', '),
+        anioCursadaPorAnio: anioCursadaPorAnio.map(a => `${a.anio}:${a.anioCursada}`).join(', ')
+        
+      });
+    }
+    const analisisreinscriptos= contarReinscripcionesAcumuladas(resultados);
+    //exportarCSV(resultados, 'analisis_alumnos.csv');
+    //res.json(analisisreinscriptos) 
+    res.json(resultados);
+   } catch (error) {
+    console.error('Error en getAnalisisAlumnos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+

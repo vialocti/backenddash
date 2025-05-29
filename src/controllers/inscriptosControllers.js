@@ -22,6 +22,7 @@ const countInscriptos = async (anio) => {
         where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) and not tipo_ingreso is null group by tipo_ingreso 
       `
         let resultado = await coneccionDB.query(sqlqy)
+        
         return resultado.rows
 
     } catch (error) {

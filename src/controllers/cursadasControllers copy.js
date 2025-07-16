@@ -638,12 +638,13 @@ const traerCodMat=async(comision)=>{
 
 //convertir datos crudos en por comisiones
 
-export const convertirDatosNew = async (ncomisiones, datoscrudos, anio) => {
+//comienzo de tratamiento de datos
+
+export const convertirDatosNew=async (ncomisiones, datoscrudos, anio) => {
     const agrupado = {};
-  
+
     for (const item of datoscrudos) {
       const key = `${item.comision}_${item.nombre}_${item.periodo}_${item.propuesta}`;
-  
       if (!agrupado[key]) {
         agrupado[key] = {
           comision: item.comision,
@@ -664,146 +665,129 @@ export const convertirDatosNew = async (ncomisiones, datoscrudos, anio) => {
           porcentaje2E: 0.0
         };
       }
-  
+    
       const count = parseInt(item.count, 10);
-      const { origen, resultado } = item;
-  
-      if (origen === 'P' && resultado === 'A') agrupado[key].promocionado += count;
-      else if (origen === 'R' && resultado === 'A') agrupado[key].regular += count;
-      else if (origen === 'R' && resultado === 'R') agrupado[key].reprobado += count;
-      else if (origen === 'R' && resultado === 'U') agrupado[key].ausente += count;
+    
+      if (item.origen === 'P' && item.resultado === 'A') {
+        agrupado[key].promocionado += count;
+      } else if (item.origen === 'R' && item.resultado === 'A') {
+        agrupado[key].regular += count;
+      } else if (item.origen === 'R' && item.resultado === 'R') {
+        agrupado[key].reprobado += count;
+      } else if (item.origen === 'R' && item.resultado === 'U') {
+        agrupado[key].ausente += count;
+      }
     }
-  
-    const resultadoFinal = Object.values(agrupado).map((item) => {
+    
+    // Paso 2: calcular totales y porcentajes
+    const resultadoFinal = Object.values(agrupado).map(item => {
       const base = item.regular + item.reprobado + item.ausente;
+      const total = base;
+    
       return {
         ...item,
-        total: base,
+        total,
         porccentajeR: base > 0 ? parseFloat((item.regular / base).toFixed(2)) : 0.0,
-        porccentajeP: base > 0 ? parseFloat((item.promocionado / base).toFixed(2)) : 0.0,
+        porccentajeP: base > 0 ? parseFloat((item.promocionado / base).toFixed(2)) : 0.0
       };
     });
+    resultadoFinal.forEach(async element =>{
+        element.codmat= await traerCodMat(element.comision)
+   })
+    
+return resultadoFinal
+}
+
+
+
+export const convertirDatos= async (ncomisiones, datoscrudos,anio)=>{
   
-    // Traer codmat en paralelo
-    await Promise.all(
-      resultadoFinal.map(async (item) => {
-        item.codmat = await traerCodMat(item.comision);
+    let comitratamiento = ncomisiones.split(',')
+    //console.log(datoscrudos)
+    const arrayDatos = []
+  
+
+    try {
+        comitratamiento.forEach(element => {
+            let dato={
+                propuesta:0,
+                comision:0,
+                codmat:'',
+                nombre:'',
+                periodo:'',
+                regular:0,
+                reprobado:0,
+                ausente:0,
+                promocionado:0,
+                total:0,
+                porccentajeR:0.0,
+                porccentajeP:0.0,
+                examenuno:0,
+                porcentaje1E:0.0,
+                examendos:0,
+                porcentaje2E:0.0
+                
+               }
+            dato.comision=element
+           
+            dato.nombre = traerDato(element,datoscrudos, 0)
+            dato.periodo = traerDato(element,datoscrudos, 1)
+            if(dato.nombre && dato.periodo){
+                    arrayDatos.push(dato)
+            }
+        });
+        
+       
+
+        arrayDatos.forEach(elemento=>{
+            elemento.regular = traerDatoPerfomance(elemento.comision,datoscrudos, 0)
+            elemento.reprobado = traerDatoPerfomance(elemento.comision,datoscrudos, 1)
+            elemento.ausente = traerDatoPerfomance(elemento.comision,datoscrudos, 2)
+            elemento.promocionado = traerDatoPerfomance(elemento.comision,datoscrudos, 3)
+
       })
-    );
-  
-    return resultadoFinal;
-  };
-  
+      //console.log('HOLA')
 
-//examenes comisiones
-export const traerExamenAprobadosComision = async (anio, propuesta, comision, codmat, ciclo) => {
-    try {
-      const fechas = await traerFechaInicioIndices(comision);
-      if (!fechas) return 0;
-  
-      const baseSql = `
-        SELECT COUNT(*) AS count
-        FROM negocio.vw_hist_academica vwh
-        WHERE vwh.alumno IN (
-          SELECT DISTINCT sic.alumno
-          FROM negocio.sga_insc_cursada sic
-          INNER JOIN negocio.sga_alumnos sa ON sa.alumno = sic.alumno
-          INNER JOIN negocio.sga_comisiones sc ON sc.comision = sic.comision
-          INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo
-          INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
-          WHERE sp.anio_academico = $1 AND sc.comision = $2 AND propuesta = $3
-        )
-        AND fecha > $4 AND fecha <= $5
-        AND actividad_codigo = $6 AND origen = 'E' AND resultado = 'A'
-      `;
-  
-      const resu = await coneccionDB.query(baseSql, [
-        anio,
-        comision,
-        propuesta,
-        fechas.fechaI,
-        fechas.fechaF,
-        codmat,
-      ]);
-  
-      return resu.rows[0]?.count || 0;
+      //console.log(arrayDatos)
+      
+     
+
+      //console.log(arrayDatos)
+
+      arrayDatos.forEach(async element=>{
+           
+          
+           element.total= parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado)
+           element.porccentajeR=parseInt(element.regular)/(parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado))
+           element.porccentajeP=parseInt(element.promocionado)/(parseInt(element.regular) + parseInt(element.ausente) + parseInt(element.reprobado))
+
+      })
+
+
+       arrayDatos.forEach(async element =>{
+            element.codmat= await traerCodMat(element.comision)
+       })
+       
+       
+       setTimeout(()=> console.log('Ok'),2000)
+       
+       
+       //tratarExamenes(arrayDatos)
+       return arrayDatos
+
+
+      
     } catch (error) {
-      console.error(error);
-      return 0;
+        console.log(error)
     }
-  };
-  
 
 
-
-
-
-//detalle de actas regular, promocion por comision(nombre de la comision)
-//la madre de las funciones de resultados de actividad
-export const resultadoActaDetallesporComisiones = async (req, res) => {
-    const { anio, ncomisiones, codsede, recursado, propuesta = '0' } = req.params;
-  
-    const conrecu = recursado === 'N'
-      ? `AND NOT UPPER(sc.nombre) LIKE('%RECUR%')`
-      : recursado === 'R'
-      ? `AND UPPER(sc.nombre) LIKE('%RECUR%')`
-      : '';
-  
-    const sqlstr = `
-      SELECT sc.comision, sc.nombre, sp.nombre AS periodo, sa.origen, sa.tipo_acta,
-             sa2.propuesta, resultado, COUNT(resultado)
-      FROM negocio.sga_actas_detalle sad
-      INNER JOIN negocio.sga_alumnos sa2 ON sa2.alumno = sad.alumno
-      INNER JOIN negocio.sga_actas sa ON sa.id_acta = sad.id_acta
-      INNER JOIN negocio.sga_comisiones sc ON sc.comision = sa.comision
-      INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo
-      INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
-      WHERE sa.tipo_acta = 'N' AND sa.estado = 'C'
-        AND sp.anio_academico = $1
-        AND sa.origen IN ('P', 'R')
-        AND sc.comision IN (${ncomisiones})
-        AND sc.nombre LIKE $2
-        ${conrecu}
-      GROUP BY sc.comision, sc.nombre, sp.nombre, sa.origen, sa.tipo_acta, sa2.propuesta, sad.resultado
-    `;
-  
-    try {
-      const result = await coneccionDB.query(sqlstr, [anio, `${codsede}%`]);
-      let datos = await convertirDatosNew(ncomisiones, result.rows, anio);
-  
-      // Enriquecer con datos de examen (optimizado)
-      await Promise.all(
-        datos.map(async (element) => {
-          const { comision, propuesta, codmat, total } = element;
-  
-          const [e1, e2] = await Promise.all([
-            traerExamenAprobadosComision(anio, propuesta, comision, codmat, 1),
-            traerExamenAprobadosComision(anio, propuesta, comision, codmat, 2),
-          ]);
-  
-          element.examenuno = e1 || 0;
-          element.examendos = e2 || 0;
-          element.porcentaje1E = total ? e1 / total : 0;
-          element.porcentaje2E = total ? e2 / total : 0;
-        })
-      );
-  
-      const filtrado = propuesta !== '0'
-        ? datos.filter((d) => d.propuesta === parseInt(propuesta))
-        : datos;
-  
-      res.send(filtrado);
-    } catch (error) {
-      console.error(error);
-      res.status(500).send({ error: 'Error al procesar la solicitud' });
-    }
-  };
-  
+}
 
 
 
 //traer propuesta
-export const traerPropuesta=async (codmat)=>{
+const traerPropuesta=async (codmat)=>{
 
     const sqlstr =`select distinct propuesta from negocio.sga_planes pln
     inner join negocio.sga_planes_versiones pvs on pvs.plan = pln.plan
@@ -823,6 +807,140 @@ export const traerPropuesta=async (codmat)=>{
 
 }
 
+
+//detalle de actas regular, promocion por comision(nombre de la comision)
+//la madre de las funciones de resultados de actividad
+
+ 
+export const resultadoActaDetallesporComisiones = async (req, res) => {
+
+    const {anio,ncomisiones, codsede, recursado, propuesta} = req.params
+    console.log(ncomisiones)
+    let conrecu= ''
+    if (recursado==='N'){
+        conrecu=`and not upper(sc.nombre) like('%RECUR%')`
+    }else if (recursado==='R'){
+        conrecu=`and upper(sc.nombre) like('%RECUR%')`
+    }
+    
+
+    let sqlstr = `select sc.comision,sc.nombre,sp.nombre as periodo ,sa.origen,sa.tipo_acta, sa2.propuesta  ,resultado,count(resultado)  from negocio.sga_actas_detalle sad 
+     inner join negocio.sga_alumnos sa2 on sa2.alumno=sad.alumno    
+    inner join negocio.sga_actas sa on sa.id_acta =sad.id_acta
+    inner join negocio.sga_comisiones sc on sc.comision=sa.comision 
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+    inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+    where sa.tipo_acta='N' and sa.estado='C' and sp.anio_academico =${anio} and sa.origen in('P','R') 
+     and sc.comision in (${ncomisiones}) and sc.nombre like('${codsede}%') ${conrecu}
+    group by  sc.comision,sc.nombre,sp.nombre,sa.origen,sa.tipo_acta, sa2.propuesta ,sad.resultado
+  `
+//
+    try {
+        
+        
+        const resu = await coneccionDB.query(sqlstr)
+       
+        //const datos = await convertirDatos(ncomisiones, resu.rows, anio)
+        const datos = await convertirDatosNew(ncomisiones, resu.rows, anio)
+        //console.log(datos) 
+        if (datos ===0){console.log('No hay datos')}
+       setTimeout(()=>{
+        datos.forEach(async element=>{
+            
+            element.examenuno= await traerExamenAprobadosComision(anio,element.propuesta,element.comision,element.codmat, 1) || 0
+            element.porcentaje1E=await traerExamenAprobadosComision(anio,element.propuesta,element.comision,element.codmat, 1)/element.total || 0
+
+            element.examendos= await traerExamenAprobadosComision(anio,element.propuesta,element.comision,element.codmat, 2) || 0
+            element.porcentaje2E=await traerExamenAprobadosComision(anio,element.propuesta,element.comision,element.codmat, 2)/element.total || 0
+
+            //console.log('E2')
+            //console.log(element.examendos, element.porcentaje2E)
+
+           })
+    
+        
+    },1000) 
+    setTimeout(()=>{
+    
+        
+       console.log(propuesta) 
+       if (propuesta!=='0'){
+
+          const resultado = datos.filter(element => element.propuesta === parseInt(propuesta))
+          res.send(resultado)  
+       } else{
+             res.send(datos)
+
+       }
+       
+    
+      
+    },3000)
+        
+       //res.send(datos)
+    } catch (error) {
+
+    }
+    
+}
+
+
+
+//
+////
+//trae examen cantidad por comision de cursada
+
+const traerExamenAprobadosComision=async (anio,propuesta, comision,codmat, ciclo)=>{
+
+    const fechas = await traerFechaInicioIndices(comision)
+    //console.log(fechas)
+    try {
+        let sqlstr=''
+        if (ciclo=== 2){
+        sqlstr=`select count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
+            select distinct sic.alumno from negocio.sga_insc_cursada sic 
+            inner join negocio.sga_alumnos sa on sa.alumno=sic.alumno
+            inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+            inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+            inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+            where sp.anio_academico =${anio} and sc.comision=${comision} and propuesta=${propuesta}
+            ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
+            
+        `
+        }else{
+
+        sqlstr=`select fecha,turno_examen_nombre, count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
+            select distinct sic.alumno from negocio.sga_insc_cursada sic 
+            inner join negocio.sga_alumnos sa on sa.alumno=sic.alumno
+            inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+            inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
+            inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
+            where sp.anio_academico =${anio} and sc.comision=${comision} and propuesta=${propuesta}
+            ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
+            group by fecha,turno_examen_nombre
+            order by fecha`
+
+        }
+        //console.log(sqlstr)
+            const resu = await coneccionDB.query(sqlstr)
+           
+            if(resu.rows.count>0){
+            if(ciclo===1){
+                return resu.rows[0].count
+            }
+
+            if(ciclo===2){
+                    
+                return resu.rows[0].count
+            }
+            }else{
+                return 0
+            }
+    } catch (error) {
+        console.log(error)
+    }
+
+}
 
 
 
@@ -1169,68 +1287,3 @@ export const traerListadoCursadaComision = async (req, res) => {
     }
   };
   
-
-
-  // evaluaciones docentes 
-
-  // controllers/docentesController.js
-
-
-
-export const getEvaluacionesPorFiltro = async (req, res) => {
-  const { sede, anio, materia } = req.params;
-
-  if (!sede || !anio || !materia) {
-    return res.status(400).json({ error: 'Faltan parámetros: sede, año o materia' });
-  }
-
-  const comisionLike = `${sede}%`;           // Ej: 'M%'
-  const actividadLike = `${materia} (%`;     // Ej: 'ESTADISTICA I (%'
-
-  const query = `
-    SELECT d.id, d.legajo, d.nombre, d.comision, d.cursaste_no,
-           d.cursaste_si, d.calificacion, d.anio, d.periodo, d.actividad
-    FROM fce_per.docentes_eval d
-    WHERE d.comision LIKE $1
-      AND d.anio = $2
-      AND d.actividad LIKE $3
-      AND d.calificacion > 0.0
-  `;
-
-  try {
-    const result = await coneccionDB.query(query, [comisionLike, anio, actividadLike]);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error al obtener datos:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};
-
-
-// evalucion por id docente
-// controllers/evaluacionesController.js
-
-
-
-export const getEvaluacionPorDocente = async (req, res) => {
-  const { iddocente } = req.params;
-
-  if (!iddocente || isNaN(iddocente)) {
-    return res.status(400).json({ error: 'ID de docente inválido o no proporcionado' });
-  }
-
-  const query = `
-    SELECT e.docente_id, e.pregunta, e.bueno, e.malo, e.regular,
-           e.muybueno, e.excelente, e.ns, e.calif, e.calif_gral, e.total
-    FROM fce_per.evaluaciones e
-    WHERE e.docente_id = $1
-  `;
-
-  try {
-    const result = await coneccionDB.query(query, [iddocente]);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error al obtener evaluaciones:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};

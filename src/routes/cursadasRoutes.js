@@ -10,6 +10,8 @@ import {
     getComisionesSedePL,
     getComparativasInscripcion,
     getComparativasInscripcionActividad,
+    getEvaluacionPorDocente,
+    getEvaluacionesPorFiltro,
     getInscriptosPropuestaAñoSede,
     getListComisionesAnio,
     getListMateriasComision,
@@ -129,5 +131,9 @@ router.get('/traerinscriptostotsede/:anio',getActividadCantiInscriptosPorSede)
 router.get('/periodosgenericos', traerPeriodosgenCursadas)
 router.get('/comisionesperiodo/:periodo', traerComisionesporPeriodo)
 router.get('/listadoalumnoscomision/:comision/:anio/:sede/:actividad', traerListadoCursadaComision)
+
+
+router.get('/evaluacionAct/:sede/:anio/:materia', getEvaluacionesPorFiltro)
+router.get('/evaluacionDoc/:iddocente', getEvaluacionPorDocente)
 export default router
 

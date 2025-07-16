@@ -9,15 +9,18 @@ const rows = await axios.get(`${uri}/comisionesnumero/${anio}/${nmateria}`)getCo
 */
 
 import coneccionDB from '../database.js'
-import { convertirDatos } from './cursadasControllers.js'
+import { convertirDatosNew } from './cursadasControllers.js'
 
 //const coneccionDB = require('../database.js');
 //const { convertirDatos } = require('./cursadasControllers.js');
 
 
-const grabarRegistro= async(registro)=>{
-  const {actividad, anio, codsede,total,regulares,reprobados,ausentes,promocionados,indiceReg, indiceProm,indiceAct,recursado} = registro
-  console.log(codsede, actividad)
+
+const grabarRegistro= async(registro, actividad,codsede,recursado,anio)=>{
+  console.log(registro)
+  const {propuesta,comision,nombre, total,regular,reprobado,ausente,promocionado,porccentajeR, porccentajeP,periodo,codmat} = registro
+
+
   let sede=0
   if(codsede==='M0'){
     sede=1
@@ -29,10 +32,11 @@ const grabarRegistro= async(registro)=>{
     sede=4
   }
   try{
-  let sqlI = "INSERT INTO fce_per.dash_actividad_resultados (anio_academico,sede,actividad_nombre,total_inscriptos,regulares,reprobados,ausentes,promocionados,relacion_regular,relacion_promocion,indice_cursada,recursado) values("
-  sqlI=sqlI + anio + "," + sede +",'" + actividad + "'," + total + "," + regulares + "," + reprobados + "," + ausentes + "," + promocionados + "," + indiceReg + ", " + indiceProm + "," + indiceAct + ",'" + recursado + "')"
+    const indiceAct=porccentajeR * 0.7 + porccentajeP * 0.3
+  let sqlI = "INSERT INTO fce_per.dash_actividad_resultados ( propuesta,comision, nombre,anio_academico,sede,actividad_nombre,total_inscriptos,regulares,reprobados,ausentes,promocionados,relacion_regular,relacion_promocion,indice_cursada,recursado,periodo,codmat) values("
+  sqlI=sqlI + propuesta +", " + comision + ",'" + nombre + "',"+ anio + "," + sede +",'" + actividad + "'," + total + "," + regular + "," + reprobado + "," + ausente + "," + promocionado + "," +  porccentajeR + ", " + porccentajeP + "," + indiceAct.toFixed(2) + ",'" + recursado + "', '" + periodo + "','" + codmat + "')"
   //console.log(sqlI)
-   const result = await coneccionDB.query(sqlI)
+  const result = await coneccionDB.query(sqlI)
    
   //console.log(result.rowCount)
   }catch(error){
@@ -46,7 +50,7 @@ const grabarRegistro= async(registro)=>{
 
 const tratarDatos=(detalleComisiones,anio,actividad,codsede,recursado)=>{
   //console.log(anio,actividad)
-  console.log(detalleComisiones)
+  //console.log(detalleComisiones)
   
   
   let cantiRegular = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.regular)}, 0)
@@ -60,6 +64,8 @@ const tratarDatos=(detalleComisiones,anio,actividad,codsede,recursado)=>{
 
   let cantiA1 = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.examenuno)}, 0)
   let registro = {
+  nombre:detalleComisiones[0].nombre,
+  propuesta:detalleComisiones[0].propuesta,
   actividad:actividad,
   anio:anio,
   codsede:codsede,
@@ -81,75 +87,58 @@ return
 }
 
 
-const resultadoDetallesporComisionesH = async (anio,ncomisiones,codsede, actividad, recursado) => {
-
-  
-  let conrecu= ''
-  if (recursado==='N'){
-      conrecu=`and not upper(sc.nombre) like('%RECUR%')`
-  }else if (recursado==='R'){
-      conrecu=`and upper(sc.nombre) like('%RECUR%')`
-  }
-  
-
-  let sqlstr = `select sc.comision,sc.nombre,sp.nombre as periodo ,sa.origen,sa.tipo_acta ,resultado,count(resultado)  from negocio.sga_actas_detalle sad 
-  inner join negocio.sga_actas sa on sa.id_acta =sad.id_acta
-  inner join negocio.sga_comisiones sc on sc.comision=sa.comision 
-  inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
-  inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
-  where sad.rectificado='N' and sa.estado='C' and sp.anio_academico =${anio} and sa.origen in('P','R') 
-   and sc.comision in (${ncomisiones}) and sc.nombre like('${codsede}%') ${conrecu}
-  group by  sc.comision,sc.nombre,sp.nombre,sa.origen,sa.tipo_acta,sad.resultado
-`
-
+export const resultadoDetallesporComisionesH = async (anio, ncomisiones, codsede, actividad, recursado) => {
   try {
-      
-      //console.log(anio,ncomisiones,codsede)
-      const resu = await coneccionDB.query(sqlstr)
-      
-      
-     const datos = await convertirDatos (ncomisiones, resu.rows,anio)
-     //console.log(datos)
-     //setTimeout(()=>{ console.log('siga siga')},10000)
-     /*
-     setTimeout(()=>{
-     datos.forEach(async element=>{
-         
+    console.log(`Procesando: año=${anio}, comisiones=${ncomisiones}, sede=${codsede}, actividad=${actividad}, recursado=${recursado}`);
 
-         let examenuno=-1
-         let examendos=-1
-         let porcentaje1E=-1
-         let porcentaje2E=-1
+    const conrecu = recursado === 'N'
+      ? `AND NOT UPPER(sc.nombre) LIKE('%RECUR%')`
+      : recursado === 'R'
+      ? `AND UPPER(sc.nombre) LIKE('%RECUR%')`
+      : '';
 
-         examenuno= await traerExamenAprobadosComision(anio,element.comision,element.codmat, 1) || 0
-        porcentaje1E=await traerExamenAprobadosComision(anio,element.comision,element.codmat, 1)/element.total || 0
+    // Convertimos la lista de comisiones en un array seguro
+    const comisionesList = ncomisiones.split(',').map((c) => parseInt(c)).filter(Number.isInteger);
+    if (comisionesList.length === 0) throw new Error('Lista de comisiones inválida');
 
-          examendos= await traerExamenAprobadosComision(anio,element.comision,element.codmat, 2) || 0
-          porcentaje2E=await traerExamenAprobadosComision(anio,element.comision,element.codmat, 2)/element.total || 0
+    const sqlstr = `
+      SELECT sc.comision, sc.nombre, sp.nombre AS periodo, sa.origen, sa.tipo_acta,
+             sa2.propuesta, resultado, COUNT(resultado)
+      FROM negocio.sga_actas_detalle sad
+      INNER JOIN negocio.sga_alumnos sa2 ON sa2.alumno = sad.alumno
+      INNER JOIN negocio.sga_actas sa ON sa.id_acta = sad.id_acta
+      INNER JOIN negocio.sga_comisiones sc ON sc.comision = sa.comision
+      INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo
+      INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
+      WHERE sa.tipo_acta = 'N' AND sa.estado = 'C'
+        AND sp.anio_academico = $1
+        AND sa.origen IN ('P', 'R')
+        AND sc.comision = ANY($2)
+        AND sc.nombre LIKE $3
+        ${conrecu}
+      GROUP BY sc.comision, sc.nombre, sp.nombre, sa.origen, sa.tipo_acta, sa2.propuesta, sad.resultado
+    `;
 
-          //console.log('E2')
-          if (examenuno>-1 && examendos>-1 && porcentaje1E>-1 && porcentaje2E>-1){
-          element.examenuno=examenuno 
-          element.porcentaje1E=porcentaje1E
+    const values = [anio, comisionesList, `${codsede}%`];
+    const resu = await coneccionDB.query(sqlstr, values);
 
-          element.examendos= examendos
-          element.porcentaje2E=porcentaje2E
-          }
-         })
-  
-       
-     //console.log(datos)
-        },1500)
-        */
-     setTimeout(()=>{ tratarDatos(datos,anio,actividad,codsede, recursado)},1000)
-     
-      //console.log(datos)
-     return
+    const arrayDatos = await convertirDatosNew(comisionesList, resu.rows, anio);
+    for (const registro of arrayDatos) {
+      try {
+        await grabarRegistro(registro, actividad,codsede,recursado,anio); // <-- tu función para grabar
+        console.log(`Grabado comision ${registro.comision}`);
+      } catch (error) {
+        console.error(`Error al grabar comisión ${dato.comision}:`, error.message);
+      }
+    }
+    //await tratarDatos(datos, anio, actividad, codsede, recursado);
+
+    return { ok: true, actividad, comisiones: comisionesList.length };
   } catch (error) {
-
+    console.error('Error en resultadoDetallesporComisionesH:', error.message);
+    return { ok: false, actividad, error: error.message };
   }
-
-}
+};
 
 
 const getNrocomisionesMateria = async (anio, nmateria) => {
@@ -213,98 +202,57 @@ const getListadomateriasComisionRec=async (anio,sede)=>{
 
 //import {getListMateriasComision,getComisionesAnioMateria,resultadoActaDetallesporComisiones} from './cursadasControllers.js'
 
-export const grabardatosCursadas =async (req,res)=>{
+export const grabardatosCursadas = async (req, res) => {
+  const { anio, sede, recursado } = req.params;
 
-    const {anio,sede,recursado}=req.params
-    const arrayCapo = []
-    let comisionesN=''
-    let dato=null
-    let result
-    if (recursado==='S'){
-        result= await getListadomateriasComisionRec(anio,sede)
-    }else{
-        result = await getListMateriasComision(anio)
-    }
-    const materias = result
-   
-    //console.log(materias)
-  
-    if(materias){
+  try {
+    const materias = recursado === 'S'
+      ? await getListadomateriasComisionRec(anio, sede)
+      : await getListMateriasComision(anio);
 
-        materias.forEach(async element => {
-        //console.log(element.nombre)
-          const comisiones = await getNrocomisionesMateria(anio,element.nombre)
-        
-            //console.log(comisiones)
-       
-          if(comisiones){
-            
-            for (const elemento of comisiones) {
-              
-              comisionesN += elemento.comision + ",";
-            
-            }
-            comisionesN = comisionesN.substring(0, comisionesN.length - 1);
-            //console.log(comisionesN)
-            
-            
-          
-          //const datos = await resultadoDetallesporComisiones(anio,comisionesN,'S0')
-          //console.log(datos)
-            dato={
-              actividad:element.nombre,
-              anio,
-              sede:sede==='1'?'M0':sede==='2'?'S0':sede==='3'?'GA':'SM',
-              comisionesN
-            }
-            //console.log(dato)
-            //console.log(arrayCapo)
-           
-            comisionesN=''  
-            //console.log('P')
-         
-            arrayCapo.push(dato)
-              
-            
-            
-          }
-      });
-      
-      
-     
+    if (!materias || materias.length === 0) {
+      return res.status(404).send({ message: 'No se encontraron materias' });
     }
 
-    setTimeout(() => {
-         //console.log('fin')
-      //console.log(arrayCapo)
-   
+    const sedeCod = sede === '1' ? 'M0' : sede === '2' ? 'S0' : sede === '3' ? 'GA' : 'SM';
 
-    //console.log(arrayCapo)
-    if(arrayCapo && arrayCapo.length>0){
-    
-    
-     
-      arrayCapo.forEach( elemento=>{
-        setTimeout(async() =>{
-        const result = await resultadoDetallesporComisionesH(elemento.anio,elemento.comisionesN,elemento.sede, elemento.actividad,recursado)
-        
-      }, 2000)
+    const arrayCapo = [];
 
+    for (const materia of materias) {
+      const comisiones = await getNrocomisionesMateria(anio, materia.nombre);
 
-        setTimeout(()=>{let a = 0},1000)
-        //tratarDatos(datos,anio,elemento.actividad, elemento.sede)
-     
-        //console.log(result)
-       
-      })
-     res.status(201).send({message:'OK'})
-        
-    
-  } else{
-    console.log('nada')
+      if (comisiones && comisiones.length > 0) {
+        const comisionesN = comisiones.map(c => c.comision).join(',');
+
+        arrayCapo.push({
+          actividad: materia.nombre,
+          anio,
+          sede: sedeCod,
+          comisionesN,
+        });
+      }
+    }
+
+    // Procesar todos los elementos en paralelo (o secuencial si es sensible a concurrencia)
+    const resultados = await Promise.all(arrayCapo.map(async (elemento) => {
+      return await resultadoDetallesporComisionesH(
+        elemento.anio,
+        elemento.comisionesN,
+        elemento.sede,
+        elemento.actividad,
+        recursado
+      );
+    }));
+
+    console.log('Procesamiento finalizado');
+    res.status(201).send({ message: 'OK', cantidad: resultados.length });
+
+  } catch (error) {
+    console.error('Error en grabardatosCursadas:', error);
+    res.status(500).send({ error: 'Error al procesar datos de cursadas' });
   }
-}, 2000);
-}
+};
+
 
 export const traerFechaInicioIndices =async (comision)=>{
     
@@ -317,6 +265,7 @@ export const traerFechaInicioIndices =async (comision)=>{
 
     const resu = await coneccionDB.query(strQry)
     const  fecha = resu.rows[0]
+    //console.log('dato:', comision)
     
     let anioI = fecha.fecha_fin_dictado.getFullYear()
     let mes = fecha.fecha_fin_dictado.getMonth() + 1

@@ -33,8 +33,8 @@ export const traerInscriptosSedeAnio = async (anio, sede) => {
 }
 
 
-// traer examenes rendidos con R
-export const cantidadExamenReprobados= async (alumno, actividad)=>{
+// traer examenes rendidos con R viejo por alumno
+export const cantidadExamenReprobado= async (alumno, actividad)=>{
 
    
    let sqlstr=`select count(*) as rendidas from negocio.vw_hist_academica vha 
@@ -72,7 +72,7 @@ export const cantidadExamenReprobados= async (alumno, actividad)=>{
   }
 //
 
-///traer recursados por actividad
+///traer recursados por actividad individual
 
 export const recursa = async(alumno,anio,sede,actividad) => {
     
@@ -259,3 +259,92 @@ export const tratarExamenes =(datos)=>{
         setTimeout(()=>console.log('-------------------'),200)
     });
 }
+
+
+//consilta por lote
+
+export const regularidadVigentes = async (alumnos, actividad) => {
+
+ const resu = await coneccionDB.query('set search_path to negocio')
+  const sqlstr = `
+    SELECT 
+      alumno, 
+      COUNT(*) FILTER (
+        WHERE 
+          origen = 'R' AND 
+          es_vigente = 1 AND 
+          resultado = 'A'
+      ) AS vigencia
+    FROM negocio.vw_regularidades
+    WHERE 
+      alumno = ANY($1::int[]) AND 
+      actividad_nombre = $2
+    GROUP BY alumno
+  `;
+
+  try {
+    const result = await coneccionDB.query(sqlstr, [alumnos, actividad]);
+    // Retornamos un mapa: alumno -> 'S' o 'N'
+    const map = Object.fromEntries(result.rows.map(r => [r.alumno, parseInt(r.vigencia) > 0 ? 'S' : 'N']));
+    return map;
+  } catch (error) {
+    console.log(error);
+    return {};
+  }
+};
+
+
+export const cantidadExamenReprobados = async (alumnos, actividad) => {
+  const sqlstr = `
+    SELECT 
+      alumno, 
+      COUNT(*) AS rendidas
+    FROM negocio.vw_hist_academica vha 
+    WHERE 
+      alumno = ANY($1::int[]) AND 
+      actividad_nombre = $2 AND 
+      origen = 'E' AND 
+      resultado = 'R'
+    GROUP BY alumno
+  `;
+
+  try {
+    const result = await coneccionDB.query(sqlstr, [alumnos, actividad]);
+    // Retornamos un mapa alumno -> cantidad
+    return Object.fromEntries(result.rows.map(r => [r.alumno, parseInt(r.rendidas)]));
+  } catch (error) {
+    console.log(error);
+    return {};
+  }
+};
+
+
+export const recursada = async (alumnos, anio, sede, actividad) => {
+  const sqlstr = `
+    SELECT 
+      sic.alumno,
+      COUNT(*) FILTER (
+        WHERE 
+          sp.anio_academico < $2
+          AND sc.ubicacion = $3
+          AND se.nombre = $4
+          AND NOT sc.nombre LIKE 'V%'
+      ) AS tot
+    FROM negocio.sga_insc_cursada sic
+    INNER JOIN negocio.sga_comisiones sc ON sc.comision = sic.comision
+    INNER JOIN negocio.sga_elementos se ON se.elemento = sc.elemento 
+    INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo
+    INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
+    INNER JOIN negocio.sga_periodos_genericos spgt ON spgt.periodo_generico = sp.periodo_generico
+    WHERE sic.alumno = ANY($1::int[])
+    GROUP BY sic.alumno
+  `;
+
+  try {
+    const resu = await coneccionDB.query(sqlstr, [alumnos, anio, sede, actividad]);
+    return Object.fromEntries(resu.rows.map(r => [r.alumno, r.tot]));
+  } catch (error) {
+    console.log(error);
+    return {};
+  }
+};

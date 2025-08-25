@@ -328,6 +328,7 @@ export const recursada = async (alumnos, anio, sede, actividad) => {
           sp.anio_academico < $2
           AND sc.ubicacion = $3
           AND se.nombre = $4
+          AND sic.estado = 'A'
           AND NOT sc.nombre LIKE 'V%'
       ) AS tot
     FROM negocio.sga_insc_cursada sic

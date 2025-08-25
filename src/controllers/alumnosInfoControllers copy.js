@@ -271,49 +271,6 @@ export const processReinscriptos = async (req, res) => {
 
 
 ///proceso de llenado de datos
-//obtener datos de alumnos y actualiza la tabla fce_per.alumnos_info
-
-async function obtenerDatosAlumno(row, modo = 'I') {
-  const promesas = [];
-
-  // Datos comunes a ambos modos
-  promesas.push(materiasAprobadas(row.alumno, 0));     // 0
-  promesas.push(materiasReprobadas(row.alumno, 0));    // 1
-  promesas.push(calcularPromedio(row.alumno, 'C', 0)); // 2
-  promesas.push(calcularPromedio(row.alumno, 'S', 0)); // 3
-  promesas.push(traerRegulares(row.alumno, row.plan, 0)); // 4
-
-  if (modo === 'I') {
-    promesas.push(setearAnioING(row.legajo));                          // 5
-    promesas.push(anioIngreso(row.persona, row.propuesta));           // 6
-    promesas.push(traerperdidasRegularidad(row.alumno, 'U'));         // 7
-    promesas.push(traerperdidasRegularidad(row.alumno, 'T'));         // 8
-  }
-
-  const resultados = await Promise.all(promesas);
-
-  // Resultados comunes
-  const datos = {
-    matAprobadas: resultados[0],
-    matReprobadas: resultados[1],
-    promedioCA: resultados[2],
-    promedioSA: resultados[3],
-    regulares: resultados[4],
-  };
-
-  if (modo === 'I') {
-    const perdidasU = resultados[7];
-    const perdidasT = resultados[8];
-
-    datos.anioIngFac = resultados[5];
-    datos.anioIngresoPro = resultados[6];
-    datos.aniouprg = perdidasU?.estado === 'ok' ? perdidasU.datos.anio : 0;
-    datos.perdidasreg = perdidasT?.estado === 'ok' ? perdidasT.datos.cantidad : 0;
-  }
-
-  return datos;
-}
-
 
 
 /**
@@ -321,49 +278,97 @@ async function obtenerDatosAlumno(row, modo = 'I') {
  * calcula datos adicionales y actualiza la misma tabla.
  */
 async function infoOne(tp) {
-  let sqlwhere = tp === 'P' ? `WHERE anio_ingreso_pro IS NULL` : '';
-  const sqlSelect = `SELECT alumno, persona, ubicacion, propuesta, legajo, plan FROM fce_per.alumnos_info ${sqlwhere}`;
-  const result = await coneccionDB.query(sqlSelect);
+  let client;
 
-  console.log("Cantidad de registros:", result.rowCount);
-
-  for (const row of result.rows) {
-    const datos = await obtenerDatosAlumno(row, 'I');
-
-    const sqlUpdate = `
-      UPDATE fce_per.alumnos_info
-      SET 
-        anio_ingreso_pro = $1,
-        aprobadas = $2,
-        reprobadas = $3,
-        promedioca = $4,
-        promediosa = $5,
-        anio_ingreso_fac = $6,
-        regularesap = $7,
-        perdidasreg = $8,
-        ultimaperdireg = $9
-      WHERE persona = $10 AND propuesta = $11
+  try {
+    let sqlwhere = tp==='P' ?` WHERE anio_ingreso_pro isnull`:''
+    const sqlSelect = `
+      SELECT alumno, persona, ubicacion, propuesta, legajo, plan 
+      FROM fce_per.alumnos_info ${sqlwhere}
     `;
+    const result = await coneccionDB.query(sqlSelect);
+    console.log("El número de registros es:", result.rowCount);
+    let aniouprg=0
+    let perdidasreg=0
+    // Recorrer cada registro
+    const resu= await coneccionDB.query('set search_path=negocio')
+    for (const row of result.rows) {
+      // Llamadas a funciones auxiliares (todas retornan Promises)
+      const anioIngFac = await setearAnioING(row.legajo);
+      const matAprobadas = await materiasAprobadas(row.alumno,0);
+      const matReprobadas = await materiasReprobadas(row.alumno, 0);
+      const promedioCA = await calcularPromedio(row.alumno, 'C', 0);
+      const promedioSA = await calcularPromedio(row.alumno, 'S', 0);
+      const anioIngresoPro = await anioIngreso(row.persona, row.propuesta);
+     const regulares= await traerRegulares(row.alumno,row.plan,0)
+      
+      
+      const result1 = await traerperdidasRegularidad(row.alumno, 'U')
+      if(result1.estado === 'ok' && result1.datos.anio !== undefined){
+            aniouprg = result1.datos.anio;
+            //console.log(result1)  
+           
+      }
+      const result =await traerperdidasRegularidad(row.alumno, 'T')
+      
+      if (result.estado === 'ok' && result.datos.cantidad !== undefined){
+          perdidasreg = result.datos.cantidad;
+        }
+        /* esto va adentro de sqlUpdate 
+            anio_ingreso_pro = $1,
+            aprobadas = $2,
+            reprobadas = $3,
+            promedioca = $4,
+            promediosa = $5,
+            anio_ingreso_fac = $6,
+            regularesap = $7,
+             perdidasreg = $8,
+            ultimaperdireg = $9
+      
+*/
+      //console.log(row.alumno,promedioCA, promedioSA)
+      const sqlUpdate = `
+        UPDATE fce_per.alumnos_info
+        SET 
+              anio_ingreso_pro = $1,
+            aprobadas = $2,
+            reprobadas = $3,
+            promedioca = $4,
+            promediosa = $5,
+            anio_ingreso_fac = $6,
+            regularesap = $7,
+             perdidasreg = $8,
+            ultimaperdireg = $9
+      
+            
+           
+        WHERE persona = $10 AND propuesta = $11
+      `;
+      const values = [
+        anioIngresoPro,
+        matAprobadas,
+         matReprobadas, 
+         promedioCA,
+        promedioSA, 
+        anioIngFac,
+        regulares,     
+        perdidasreg,
+        aniouprg,
+        row.persona,
+        row.propuesta
+      ];
 
-    const values = [
-      datos.anioIngresoPro,
-      datos.matAprobadas,
-      datos.matReprobadas,
-      datos.promedioCA,
-      datos.promedioSA,
-      datos.anioIngFac,
-      datos.regulares,
-      datos.perdidasreg,
-      datos.aniouprg,
-      row.persona,
-      row.propuesta
-    ];
+      await coneccionDB.query(sqlUpdate, values);
+    
+    }
 
-    await coneccionDB.query(sqlUpdate, values);
-  }
-
-  return { message: 'Actualización completada' };
-}
+      return { message: 'Actualización completada' };
+    } catch (error) {
+      console.error("Error en infoOne:", error);
+      throw error;
+ 
+    }
+} 
 
 
 
@@ -373,55 +378,63 @@ async function infoOne(tp) {
  * calcula datos adicionales y actualiza la misma tabla actualizacion de datos 
  */
 async function infoOneAct() {
+  let client;
+
   try {
-    // Obtener todos los registros de alumnos
+    
     const sqlSelect = `
-      SELECT alumno, persona, ubicacion, propuesta, legajo, plan 
-      FROM fce_per.alumnos_info
-    `;
+      SELECT alumno, persona, ubicacion, propuesta, legajo, plan FROM fce_per.alumnos_info `;
     const result = await coneccionDB.query(sqlSelect);
-
+    
     console.log("El número de registros es:", result.rowCount);
-
-    // Establecer search_path una sola vez
-    await coneccionDB.query('SET search_path = negocio');
-
-    // Recorrer registros
+    let aniouprg=0
+    let perdidasreg=0
+    // Recorrer cada registro
+    const resu= await coneccionDB.query('set search_path=negocio')
     for (const row of result.rows) {
-      // Obtener solo los datos académicos (modo 'A')
-      const datos = await obtenerDatosAlumno(row, 'A');
-
-      // Actualizar los campos correspondientes en alumnos_info
+      // Llamadas a funciones auxiliares (todas retornan Promises)
+      //const anioIngFac = await setearAnioING(row.legajo);
+      const matAprobadas = await materiasAprobadas(row.alumno,0);
+      const matReprobadas = await materiasReprobadas(row.alumno, 0);
+      const promedioCA = await calcularPromedio(row.alumno, 'C', 0);
+      const promedioSA = await calcularPromedio(row.alumno, 'S', 0);
+      //const anioIngresoPro = await anioIngreso(row.persona, row.propuesta);
+      const regulares= await traerRegulares(row.alumno,row.plan,0)
+     
       const sqlUpdate = `
         UPDATE fce_per.alumnos_info
         SET 
-          aprobadas = $1,
-          reprobadas = $2,
-          promedioca = $3,
-          promediosa = $4,
-          regularesap = $5
+             
+            aprobadas = $1,
+            reprobadas = $2,
+            promedioca = $3,
+            promediosa = $4,
+            regularesap = $5
+                    
         WHERE persona = $6 AND propuesta = $7
       `;
       const values = [
-        datos.matAprobadas,
-        datos.matReprobadas,
-        datos.promedioCA,
-        datos.promedioSA,
-        datos.regulares,
+        
+        matAprobadas,
+        matReprobadas, 
+        promedioCA,
+        promedioSA, 
+        regulares,     
         row.persona,
         row.propuesta
       ];
 
       await coneccionDB.query(sqlUpdate, values);
+    
     }
 
-    return { message: 'Actualización completada' };
-  } catch (error) {
-    console.error("Error en infoOneAct:", error);
-    throw error;
-  }
-}
-
+      return { message: 'Actualización completada' };
+    } catch (error) {
+      console.error("Error en infoOneAcT:", error);
+      throw error;
+ 
+    }
+} 
 
 
 
@@ -516,7 +529,7 @@ async function materiasReprobadas(alumno, anio) {
       sql = `
         SELECT COUNT(*) AS canti 
         FROM negocio.f_certificado_actividades($1, 'T', 'T', 'A')
-        WHERE resultado='R'
+        WHERE resultado_descripcion = 'Reprobado' AND origen = 'E'
       `;
       params = [alumno];
     } else {
@@ -544,33 +557,25 @@ async function calcularPromedio(alumno, tipo, anio) {
     await coneccionDB.query('SET search_path TO negocio');
 
     let sql, params;
-    let fechaRef;
-
     if (anio === 0) {
-      // Usamos la fecha actual
-      const hoy = new Date();
-      const yyyy = hoy.getFullYear();
-      const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-      const dd = String(hoy.getDate()).padStart(2, '0');
-      fechaRef = `${yyyy}-${mm}-${dd}`;
+      if (tipo === 'C') {
+        sql = "SELECT negocio.f_promedio_gral_con_aplazos($1, '2025-06-01') AS prom";
+      } else if (tipo === 'S') {
+        sql = "SELECT negocio.f_promedio_gral_sin_aplazos($1, '2025-06-01') AS prom";
+      }
+      params = [alumno];
     } else {
-      // Año específico -> fecha de corte 1 de abril del año siguiente
-      fechaRef = `${anio + 1}-04-01`;
+      const fechaRef = `${anio + 1}-04-01`;
+      if (tipo === 'C') {
+        sql = "SELECT negocio.f_promedio_gral_con_aplazos($1, $2) AS prom";
+      } else if (tipo === 'S') {
+        sql = "SELECT negocio.f_promedio_gral_sin_aplazos($1, $2) AS prom";
+      }
+      params = [alumno, fechaRef];
     }
-
-    if (tipo === 'C') {
-      sql = "SELECT negocio.f_promedio_gral_con_aplazos($1, $2) AS prom";
-    } else if (tipo === 'S') {
-      sql = "SELECT negocio.f_promedio_gral_sin_aplazos($1, $2) AS prom";
-    } else {
-      throw new Error("Tipo inválido. Debe ser 'C' o 'S'.");
-    }
-
-    params = [alumno, fechaRef];
     const result = await coneccionDB.query(sql, params);
     const prom = result.rows[0].prom;
     return prom !== null ? prom : 1.00;
-
   } catch (error) {
     console.error("Error en calcularPromedio:", error);
     throw error;
@@ -1218,7 +1223,7 @@ export const calculoVelocidad=async(req, res)=> {
    : ""
 
   const sqlstr = `
-    SELECT alumno, anio_ingreso_pro, propuesta, plan_version, aprobadas, regularesap 
+    SELECT alumno, anio_ingreso_fac, propuesta, plan_version, aprobadas, regularesap 
     FROM fce_per.alumnos_info ${whereext}
   `;
 
@@ -1233,7 +1238,7 @@ export const calculoVelocidad=async(req, res)=> {
     for (const row of rows) {
       let bimestres = [75, 79, 57, 80].includes(row.plan_version) ? 16 : 20;
       //console.log(row.alumno,anio,row.anio_ingreso_fac,epoca)
-      let nrobimestres = (anio - row.anio_ingreso_pro) * 4 + parseInt(epoca);
+      let nrobimestres = (anio - row.anio_ingreso_fac) * 4 + parseInt(epoca);
 
       let aprobadas = row.aprobadas;
       let regulares = row.regularesap;
@@ -1246,7 +1251,7 @@ export const calculoVelocidad=async(req, res)=> {
       if(aprobadas>0 && nrobimestres>0 || regulares>0 && nrobimestres>0){
             if (aprobadas > 0 && regulares > 0) {
               calculotiempo = (idealExamen / aprobadas) * 0.7 + (idealCursadas / regulares) * 0.3;
-            } else if (aprobadas > 0 && regulares === 0 || aprobadas > regulares) {
+            } else if (aprobadas > 0 && regulares === 0) {
               calculotiempo = idealExamen / aprobadas;
             } else if (aprobadas === 0 && regulares > 0) {
               calculotiempo = idealExamen * 2 * 0.7 + (idealCursadas / regulares) * 0.3;

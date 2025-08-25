@@ -3,7 +3,13 @@ import { cantidadExamenReprobados, recursa, recursada, regularidadVigente, regul
 //import { Connection } from 'pg'
 //const coneccionDB = require('../../database.js');
 import coneccionDB from "../database.js";
+//inscripciones a cursasas por alumno
+// controllers/inscripcionesController.js
 import { traerFechaInicioIndices } from './utilesControllers.js'
+
+//inscripciones
+// controllers/inscripcionesController.js
+
 
 /*
 const {
@@ -1234,3 +1240,159 @@ export const getEvaluacionPorDocente = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+
+
+// Obtener inscripciones de un alumno
+export const getInscripcionesCursadasComisionByAlumno = async (req, res) => {
+  const { anioacademico,alumno } = req.params;
+
+  const sql = `
+    SELECT 
+      sic.inscripcion,
+      sic.alumno,
+      sic.comision,
+      sc.elemento,
+      se.codigo,
+      se.nombre,
+      sc.periodo_lectivo,
+      sc.turno,
+      spl.periodo,
+      sp.periodo_generico,
+      sp.nombre AS nombre_periodo,
+      sp.anio_academico,
+      sic.estado
+    FROM negocio.sga_insc_cursada sic
+    INNER JOIN negocio.sga_comisiones sc 
+      ON sc.comision = sic.comision
+    INNER JOIN negocio.sga_periodos_lectivos spl 
+      ON spl.periodo_lectivo = sc.periodo_lectivo
+    INNER JOIN negocio.sga_periodos sp 
+      ON sp.periodo = spl.periodo
+    INNER JOIN negocio.sga_elementos se 
+      ON se.elemento = sc.elemento
+    WHERE sp.anio_academico=$1 AND sic.alumno = $2 and sic.estado='P'
+  `;
+
+  try {
+    const { rows } = await coneccionDB.query(sql, [anioacademico,alumno]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener inscripciones:', error);
+    res.status(500).json({ error: 'Error al obtener las inscripciones' });
+  }
+};
+
+
+///subcomisiones
+
+export const getSubcomisionesByComision = async (req, res) => {
+    const { comision } = req.params;
+  
+    const sql = `
+      SELECT 
+        subcomision, 
+        nombre,
+        cupo
+      FROM negocio.sga_subcomisiones
+      WHERE comision = $1
+    `;
+  
+    try {
+      const { rows } = await coneccionDB.query(sql, [comision]);
+      res.json(rows);
+    } catch (error) {
+      console.error('Error al obtener subcomisiones:', error);
+      res.status(500).json({ error: 'Error al obtener subcomisiones' });
+    }
+  };
+
+  export const insertInscripcionSubcomision=async (req, res) => {   
+
+    const { inscripcion, subcomision } = req.body;    
+    if (!inscripcion || !subcomision) {
+      return res.status(400).json({ error: 'Faltan datos: inscripcion o subcomision' });
+    } 
+    const sql = `
+      INSERT INTO fce_per.sga_insc_subcomision (inscripcion, subcomision)
+      VALUES ($1, $2)
+      RETURNING *
+    `;  
+    try {
+      const { rows } = await coneccionDB.query(sql, [inscripcion, subcomision]);
+      res.status(201).json(rows[0]);
+    } catch (error) {
+      console.error('Error al insertar inscripción en subcomisión:', error);
+      res.status(500).json({ error: 'Error al insertar inscripción en subcomisión' });
+    }   
+  
+  }
+
+
+  //
+  export const UpdateInscripcionSubcomision=async (req, res) => {   
+
+    const { inscripcion, subcomision } = req.body;    
+    if (!inscripcion || !subcomision) {
+      return res.status(400).json({ error: 'Faltan datos: inscripcion o subcomision' });
+    } 
+    const sql = `
+      UPDATE fce_per.sga_insc_subcomision  SET subcomision= $2, inscripcion_fecha = NOW()  WHERE inscripcion = $1
+      RETURNING *
+    `;  
+    try {
+      const { rows } = await coneccionDB.query(sql, [inscripcion, subcomision]);
+      res.status(201).json(rows[0]);
+    } catch (error) {
+      console.error('Error al Modificar inscripción en subcomisión:', error);
+      res.status(500).json({ error: 'Error al Modificar inscripción en subcomisión' });
+    }   
+  
+  }
+
+    //listado alumnos subcomisiones
+  export const getListadoAlumnosSubcomisiones = async (req, res) => {
+    const { subcomision } = req.params;
+
+    const sql = `
+    select isc.inscripcion,ss.comision,sc.nombre as ncomi , isc.subcomision, ss.nombre as nsubcomi ,isc.inscripcion_fecha, sic.alumno, mp.apellido,mp.nombres   from fce_per.sga_insc_subcomision isc
+inner join negocio.sga_subcomisiones ss on ss.subcomision = isc.subcomision 
+inner join negocio.sga_comisiones sc on sc.comision=ss.comision 
+inner join negocio.sga_insc_cursada sic on sic.inscripcion =isc.inscripcion 
+inner join negocio.sga_alumnos sa on sa.alumno = sic.alumno 
+inner join negocio.mdp_personas mp on mp.persona=sa.persona
+    where isc.subcomision =$1
+    `;
+
+    try {
+      const result = await coneccionDB.query(sql, [subcomision]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error al obtener el listado de subcomisiones:', error);
+      res.status(500).json({ error: 'Error al obtener el listado de subcomisiones' });
+    }
+  };
+
+
+    //listado alumnos subcomisiones
+    export const getListadoSubcomisionesAlumno = async (req, res) => {
+      const { alumno } = req.params;
+  
+      const sql = `
+       select isc.inscripcion,ss.comision,sc.nombre,ss.nombre , isc.subcomision, isc.inscripcion_fecha, ss.nombre, sic.alumno  from fce_per.sga_insc_subcomision isc
+      inner join negocio.sga_subcomisiones ss on ss.subcomision = isc.subcomision 
+      inner join negocio.sga_comisiones sc on sc.comision=ss.comision 
+      inner join negocio.sga_insc_cursada sic on sic.inscripcion =isc.inscripcion 
+      inner join negocio.sga_alumnos sa on sa.alumno = sic.alumno 
+     
+      where sic.alumno =$1
+      `;
+  
+      try {
+        const result = await coneccionDB.query(sql, [alumno]);
+        res.json(result.rows);
+      } catch (error) {
+        console.error('Error al obtener el listado de subcomisiones:', error);
+        res.status(500).json({ error: 'Error al obtener el listado de subcomisiones' });
+      }
+    };

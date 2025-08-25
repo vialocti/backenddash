@@ -1,4 +1,6 @@
 import coneccionDB from '../database.js'
+import  { format } from '@fast-csv/format';
+
 //const coneccionDB = require('../database.js');
 
 /*
@@ -39,7 +41,7 @@ let whereClause = `
 `;
 
 try {
-    let sqlQry=`select distinct left(usuario,3) as claustro,sa.ubicacion,sa.propuesta,sa.legajo,sa.calidad,mpd.nro_documento , apellido, nombres, mpc.email  from negocio.mdp_personas mp 
+    let sqlQry=`select distinct left(usuario,3) as claustro,sa.ubicacion,sa.propuesta,sa.legajo,sa.calidad,mpd.nro_documento , apellido, nombres, mpc.email, sa.alumno  from negocio.mdp_personas mp 
     inner join negocio.mdp_personas_documentos mpd on mpd.documento = mp.documento_principal 
     inner join negocio.mdp_personas_contactos mpc on mpc.persona = mp.persona
     inner join negocio.sga_alumnos sa on sa.persona= mp.persona
@@ -87,6 +89,42 @@ export const getAlumnosActivos = async (req, res) => {
     }
 
 }
+
+
+//cantidad de alumnos activos mas de una carrera por persona puede haber 
+export const getAlumnosActivos_Info = async (req, res) => {
+  const sql = `
+    SELECT persona, alumno, legajo, ubicacion, propuesta, plan_version
+    FROM negocio.sga_alumnos
+    WHERE calidad = 'A'
+      AND legajo IS NOT NULL
+      AND propuesta IN (1, 2, 3, 6, 7, 8)
+  `;
+
+  try {
+    const result = await coneccionDB.query(sql);
+    const rows = result.rows;
+
+    if (rows.length === 0) {
+      return res.status(404).send('No se encontraron datos.');
+    }
+
+    // Cabeceras de respuesta HTTP para archivo CSV
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="alumnos_activos.csv"');
+
+    // Usamos fast-csv para escribir directamente en la respuesta
+    const csvStream = format({ headers: true });
+    csvStream.pipe(res);
+    rows.forEach(row => csvStream.write(row));
+    csvStream.end();
+
+  } catch (error) {
+    console.error('Error al generar CSV:', error);
+    res.status(500).send({ message: 'Error fatal' });
+  }
+};
+
 //cantidad de alumnos (personas fisicas)
 export const getAlumnosPerActivos = async (req, res) => {
 
@@ -106,7 +144,7 @@ export const getAlumnosPerActivos = async (req, res) => {
 //alumnos por propuestas, ubicacion y sexo
 export const getAlumnosPorPropuesta = async (req, res) => {
 
-
+    
     let sql = `select ubicacion,CASE propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
     count(propuesta),sexo from negocio.sga_alumnos as alu 
     inner join negocio.mdp_personas as per on per.persona=alu.persona

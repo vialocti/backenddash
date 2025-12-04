@@ -70,7 +70,8 @@ export const getTurnosMesaAni = async (req, res) => {
       // Asegurar que `periodo` es un array si se reciben múltiples turnos
       const periodosArray = periodo.split(','); // Convertir la cadena a array si es necesario
       const placeholders = periodosArray.map((_, index) => `$${index + 2}`).join(','); // Crear placeholders dinámicos
-  
+    
+
       const sqlstr = `
         SELECT DISTINCT 
           vme.turno_examen_nombre,
@@ -88,6 +89,7 @@ export const getTurnosMesaAni = async (req, res) => {
         ORDER BY vme.mesa_examen_elemento_nombre
       `;
   
+      //console.log(sqlstr);  
       const queryParams = [anio, ...periodosArray, ubicacion]; // Parametros en orden
       const resu = await coneccionDB.query(sqlstr, queryParams);
   
@@ -161,7 +163,7 @@ export const getTurnosMesaAni = async (req, res) => {
 
 export const getMesasExamenTUTI = async (req, res) => {
   const { anio, periodo, ubicacion } = req.params;
-
+  
   // Validación básica de parámetros
   if (!anio || !periodo || !ubicacion) {
     return res.status(400).send("Parámetros insuficientes");
@@ -170,7 +172,7 @@ export const getMesasExamenTUTI = async (req, res) => {
   // Condición para la ubicación: si ubicacion es 5, usamos IN (1,2,3,4), de lo contrario, usamos igualdad
   const ubicacionCondition =
     Number(ubicacion) === 5
-      ? "vme.mesa_examen_ubicacion IN (1,2,4)"
+      ? "vme.mesa_examen_ubicacion IN (1,2,3,4)"
       : `vme.mesa_examen_ubicacion = ${ubicacion}`;
 
   try {
@@ -178,6 +180,7 @@ export const getMesasExamenTUTI = async (req, res) => {
    const sqlstr = `
       WITH resultados AS (
   SELECT 
+  
     va.llamado_mesa,
     CASE WHEN sa.propuesta = 1 THEN 'CPN'
          WHEN sa.propuesta = 2 THEN 'LA'                                  
@@ -371,6 +374,7 @@ const alumnost =async(anio,sede,propuesta)=>{
 }
 
 //HISTORICOS
+//grabar datos historicos aprobadas por alumno anio
 const tratarHistoricosaprobadasAlumnosAnio=async(anio,sede,propuesta, tablavalores )=>{
     
   
@@ -400,6 +404,7 @@ const tratarHistoricosaprobadasAlumnosAnio=async(anio,sede,propuesta, tablavalor
 
 }
 //
+/*
 const tratarQry=(alumnos)=>{
 
     let tabla=[]
@@ -419,8 +424,43 @@ const tratarQry=(alumnos)=>{
     tabla.push(datos)
     return tabla
 }
+*/
 
+const tratarQryOptimizado = (alumnos) => {
+    // Inicialización del objeto de resultados con todos los contadores a cero.
+    let datos = {
+        cero: 0,
+        una: 0,
+        dos: 0,
+        tres: 0,
+        cuatro: 0,
+        cinco: 0,
+        seis: 0,
+        siete: 0,
+        ocho: 0,
+        nueve: 0,
+    };
 
+    // Nombres de las claves para mapear la cantidad al campo.
+    const claves = ['cero', 'una', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho'];
+
+    // 💡 Procesa el array en una única pasada
+    alumnos.forEach(alumno => {
+        const totalAprobadas = parseInt(alumno.total_aprobadas, 10);
+
+        if (totalAprobadas >= 0 && totalAprobadas <= 8) {
+            // Usa el array 'claves' para acceder dinámicamente al campo (más limpio).
+            // Por ejemplo, si totalAprobadas es 3, se accede a datos['tres']
+            datos[claves[totalAprobadas]]++;
+        } else if (totalAprobadas > 8) {
+            datos.nueve++;
+        }
+        // Se ignora el caso si totalAprobadas es < 0, aunque por la consulta SQL no debería ocurrir.
+    });
+
+    // Envuelve el objeto 'datos' en un array, como lo hacía la función original.
+    return [datos];
+};
 //primero solo los ingresantes de una carrera y sede ingresantes puros 
 
 export const traerAprobadasPorAlumnoSedePropuestaAnio = async(req,res)=>{
@@ -458,7 +498,7 @@ try {
             let alumnostI = parseInt( await alumnost(anio,sede,propuesta))
             let alucero=alumnostI-alumnostmatap
             //console.log(alucero)
-            const tablavalores = tratarQry(resu.rows)
+            const tablavalores = tratarQryOptimizado(resu.rows)
             tablavalores[0].cero=alucero
             if (tipoO ==='H'){
                let resp = tratarHistoricosaprobadasAlumnosAnio(anio,sede,propuesta,tablavalores)

@@ -11,9 +11,11 @@ import {
   getAlumnosPorUbiPropuestaProvisorios,
   getAlumnosPorUbiProvisorios,
   getAlumnos_Info,
+  getAprobadasPorAlumno,
   getDatosAlumnoApp,
   getEvolucionCohorte,
   getPlanesVersionActivos,
+  getRegularesPorAlumno,
   getReinscriptosUbiProp,
   getResumenAlumnos,
 } from "../controllers/alumnosControllers.js";
@@ -45,5 +47,8 @@ router.get("/resumenalumnos",getResumenAlumnos)
 router.get("/query/:sqlstr",consultaQuery)
 
 router.get("/alumnosingresantes/:fecha/:anio", calcularAniosCursada);
+
+router.get("/aprobadasalumno/:alumno",getAprobadasPorAlumno)
+router.get("/regularesalumno/:alumno", getRegularesPorAlumno)
 
 export default router;

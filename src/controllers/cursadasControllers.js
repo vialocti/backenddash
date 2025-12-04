@@ -95,7 +95,7 @@ export const getListComisionesAnio = async (req, res) => {
     inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
     inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
     inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
-    where sp.anio_academico =${anio} and not sc.nombre like'V%' order by sc.ubicacion, sc.periodo_lectivo, sc.nombre `
+    where sp.anio_academico =${anio} and not sc.nombre like'V%' and sc.estado='A' order by sc.ubicacion, sc.periodo_lectivo, sc.nombre `
 
     try {
         const resu = await coneccionDB.query(sqlstr)
@@ -141,7 +141,7 @@ inner join negocio.sga_elementos se on se.elemento = sc.elemento
 inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo = sc.periodo_lectivo
 inner join negocio.sga_periodos sp on sp.periodo=spl.periodo 
  
-where sp.anio_academico =${anio} and not sc.nombre like'V%' 
+where sp.anio_academico =${anio} and not sc.nombre like'V%' and sc.estado='A' 
 group by sc.ubicacion
 order by sc.ubicacion
 `
@@ -277,20 +277,21 @@ export const getActividadCantiInscriptosC = async (req, res) => {
 }
 
 
-/////inscriptos a cursadas
+/////inscripciones a cursadas
 
 export const getActividadCantiInscriptosPorSede = async (req, res) => {
 
     const { anio} = req.params
-let sqlstr=`select sc.ubicacion, count(sic.comision) as tot from negocio.sga_insc_cursada sic 
+let sqlstr=`select sc.ubicacion,sa.propuesta,sa.plan_version , sic.estado, count(sic.alumno)  from negocio.sga_insc_cursada sic
+	inner join negocio.sga_alumnos sa on sa.alumno = sic.alumno 
     inner join negocio.sga_comisiones sc on sc.comision=sic.comision
     inner join negocio.sga_elementos se on se.elemento = sc.elemento 
     inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
     inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
     inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
     where sp.anio_academico =${anio} and not sc.nombre like'V%'
-    group by sc.ubicacion
-    order by sc.ubicacion 
+    group by sc.ubicacion, sa.propuesta,sa.plan_version, sic.estado
+    order by sc.ubicacion, sa.propuesta,sa.plan_version, sic.estado 
 `
 try {
 
@@ -303,6 +304,33 @@ try {
 
 }
 
+
+///alumnos inscriptos a cursadas por propuesta sede y año
+
+export const getInscriptosSedeAnio = async (req, res) => {
+
+
+    const { anio} = req.params
+    let sqlstr=` select  sc.ubicacion,sa.propuesta,sa.plan_version , sic.estado, count(distinct sic.alumno)  from negocio.sga_insc_cursada sic
+	inner join negocio.sga_alumnos sa on sa.alumno = sic.alumno 
+    inner join negocio.sga_comisiones sc on sc.comision=sic.comision
+    inner join negocio.sga_elementos se on se.elemento = sc.elemento 
+    inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
+    inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
+    inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
+    where sp.anio_academico =${anio} and not sc.nombre like'V%'
+    
+    group by sc.ubicacion, sa.propuesta,sa.plan_version, sic.estado
+    order by sc.ubicacion, sa.propuesta,sa.plan_version, sic.estado`
+
+    try {
+        const resu = await coneccionDB.query(sqlstr)
+        res.send(resu.rows)
+    }
+    catch (error) {
+        console.log(error)
+    } 
+}
 
 ////
 
@@ -705,9 +733,11 @@ export const convertirDatosNew = async (ncomisiones, datoscrudos, anio) => {
 export const traerExamenAprobadosComision = async (anio, propuesta, comision, codmat, ciclo) => {
     try {
       const fechas = await traerFechaInicioIndices(comision);
+      //console.log(fechas);
       if (!fechas) return 0;
-  
-      const baseSql = `
+      let baseSql = '';
+      if (ciclo === 2) {
+      baseSql = `
         SELECT COUNT(*) AS count
         FROM negocio.vw_hist_academica vwh
         WHERE vwh.alumno IN (
@@ -722,7 +752,25 @@ export const traerExamenAprobadosComision = async (anio, propuesta, comision, co
         AND fecha > $4 AND fecha <= $5
         AND actividad_codigo = $6 AND origen = 'E' AND resultado = 'A'
       `;
-  
+      } else {
+        baseSql = `
+        SELECT fecha, turno_examen_nombre, COUNT(turno_examen_nombre) AS count
+        FROM negocio.vw_hist_academica vwh
+        WHERE vwh.alumno IN (
+          SELECT DISTINCT sic.alumno
+          FROM negocio.sga_insc_cursada sic
+          INNER JOIN negocio.sga_alumnos sa ON sa.alumno = sic.alumno
+          INNER JOIN negocio.sga_comisiones sc ON sc.comision = sic.comision
+          INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo
+          INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
+          WHERE sp.anio_academico = $1 AND sc.comision = $2 AND propuesta = $3
+        )
+        AND fecha > $4 AND fecha <= $5
+        AND actividad_codigo = $6 AND origen = 'E' AND resultado = 'A'
+        group by fecha, turno_examen_nombre order by fecha
+      `;
+      }
+      
       const resu = await coneccionDB.query(baseSql, [
         anio,
         comision,
@@ -731,7 +779,7 @@ export const traerExamenAprobadosComision = async (anio, propuesta, comision, co
         fechas.fechaF,
         codmat,
       ]);
-  
+      
       return resu.rows[0]?.count || 0;
     } catch (error) {
       console.error(error);
@@ -776,6 +824,7 @@ export const resultadoActaDetallesporComisiones = async (req, res) => {
     try {
       const result = await coneccionDB.query(sqlstr, [anio, `${codsede}%`]);
       let datos = await convertirDatosNew(ncomisiones, result.rows, anio);
+      
   
       // Enriquecer con datos de examen (optimizado)
       await Promise.all(
@@ -786,7 +835,7 @@ export const resultadoActaDetallesporComisiones = async (req, res) => {
             traerExamenAprobadosComision(anio, propuesta, comision, codmat, 1),
             traerExamenAprobadosComision(anio, propuesta, comision, codmat, 2),
           ]);
-  
+      
           element.examenuno = e1 || 0;
           element.examendos = e2 || 0;
           element.porcentaje1E = total ? e1 / total : 0;
@@ -820,7 +869,7 @@ export const traerPropuesta=async (codmat)=>{
 
     try {
         const resu =await coneccionDB.query(sqlstr, [codmat])
-        console.log(resu.rows)
+       // console.log(resu.rows)
         return resu.rows[0].propuesta
     } catch (error) {
         return 0
@@ -1002,37 +1051,58 @@ export const traerPeriodosgenCursadas = async (req, res)=>{
 }
 
 //traer comisiones por periodo generico y año
-export const traerComisionesporPeriodo =async (req,res)=>{
 
-    const {periodo}=req.params
-    let anio=2025
 
+  export const traerComisionesporPeriodo = async (req, res) => {
+    const { periodo } = req.params;
+  
     try {
-
-        let sqlstr = `
+      // 1. Determinar el año automáticamente
+      const hoy = new Date();
+      const mes = hoy.getMonth() + 1; // getMonth() devuelve 0-11
+      const anioActual = hoy.getFullYear();
+      let anio;
+  
+      if (mes >= 4 && mes <= 12) {
+        anio = anioActual;
+      } else if (mes >= 1 && mes <= 3) {
+        anio = anioActual - 1;
+      }
+  
+      // 2. Construir la cláusula WHERE dinámicamente
+      let sqlstr = `
         SELECT DISTINCT 
           sp.nombre as periodo, 
           sc.comision,
           se.codigo as codmat,
           sc.nombre as cominame,
           sel.nombre as matname 
-           
         FROM negocio.sga_comisiones sc
         INNER JOIN negocio.sga_elementos se ON se.elemento = sc.elemento
         INNER JOIN negocio.sga_periodos_lectivos spl ON spl.periodo_lectivo = sc.periodo_lectivo 
         INNER JOIN negocio.sga_periodos sp ON sp.periodo = spl.periodo
         INNER JOIN negocio.sga_periodos_genericos spgt ON spgt.periodo_generico = sp.periodo_generico
         INNER JOIN negocio.sga_elementos sel ON sel.codigo=se.codigo
-        WHERE sp.anio_academico = $1 AND NOT sc.nombre like '%V%'  AND spgt.periodo_generico=$2 ORDER BY sel.nombre
+        WHERE sp.anio_academico = $1 AND NOT sc.nombre like 'V%'
       `;
-      //console.log(sqlstr)
-      const result = await coneccionDB.query(sqlstr, [anio, periodo])
-      res.send(result.rows)
-        
+  
+      const params = [anio];
+      if (parseInt(periodo, 10) !== 0) {
+        sqlstr += ` AND spgt.periodo_generico = $2`;
+        params.push(periodo);
+      }
+  
+      sqlstr += ` ORDER BY sel.nombre`;
+  
+      // 3. Ejecutar la consulta
+      const result = await coneccionDB.query(sqlstr, params);
+      res.send(result.rows);
     } catch (error) {
-        console.log(error)
+      console.error('Error en traerComisionesporPeriodo:', error);
+      res.status(500).send('Error interno del servidor');
     }
-}
+  };
+
 
 // listado de cursada por comision
 export const traerListadoCursadaComision = async (req, res) => {
@@ -1271,7 +1341,7 @@ export const getInscripcionesCursadasComisionByAlumno = async (req, res) => {
       ON sp.periodo = spl.periodo
     INNER JOIN negocio.sga_elementos se 
       ON se.elemento = sc.elemento
-    WHERE sp.anio_academico=$1 AND sic.alumno = $2 and sic.estado='P'
+    WHERE sp.anio_academico=$1 AND sic.alumno = $2 and sic.estado in ('P', 'A') AND periodo_generico=13
   `;
 
   try {

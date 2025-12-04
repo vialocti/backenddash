@@ -26,7 +26,7 @@ export const getEgresadoSedeCarreraAnio = async (req, res) => {
      CASE sa.propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
     count(sa.propuesta) as canti,avg(promedio) as pro,avg(promedio_sin_aplazos) as prosa  from negocio.sga_certificados_otorg sco `
     let sql_I = " inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno"
-    let sql_w = ` where sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}'`
+    let sql_w = ` where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}'`
     let sql_g = " group by sa.ubicacion ,sa.propuesta order by sa.ubicacion,sa.propuesta"
 
 
@@ -67,7 +67,7 @@ export const getListadoEgreSedeCarreraAnio = async (req, res) => {
     from negocio.sga_certificados_otorg sco
     inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
     inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-    where sa.ubicacion=${sede} and sa.propuesta=${car} and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' `
+    where sa.ubicacion=${sede} and sa.propuesta=${car} and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' `
 
 
 
@@ -90,7 +90,12 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
     let fecha_i = ''
     let fecha_f = ''
     let aniot = Number(anio) + 1
-
+    let ubicacion='1'
+    if (sede === '0') { 
+        ubicacion ='1,2,3,4'
+    }else{
+            ubicacion=sede
+        }
     if (lapso === 'C') {
 
         fecha_i = `${anio}-01-01`
@@ -108,10 +113,10 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
     count(sa.propuesta) from negocio.sga_certificados_otorg sco
     inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
     inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-    where sa.ubicacion=${sede} and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
+    where sa.ubicacion in (${ubicacion}) and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
     group by sa.propuesta
     `
-
+   //console.log(sql)
 
 
 
@@ -154,7 +159,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
         from negocio.sga_certificados_otorg sco
         inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
         inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-        where sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' and certificado  in (3,4,5,6,7,9)
+        where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' and certificado  in (3,4,5,6,7,9)
         group by sa.ubicacion
     `
 
@@ -171,7 +176,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
 
 
 export const getEgresadosPromedios = async (req, res) => {
-    console.log('aaa')
+   // console.log('aaa')
     const { anio, car, lapso, ficola, ffcola } = req.params
 
     let fecha_i = ''
@@ -222,7 +227,7 @@ export const getEgresadosPromedios = async (req, res) => {
    from negocio.sga_certificados_otorg cer 
    inner join negocio.mdp_personas per on per.persona=cer.persona
    inner join negocio.sga_alumnos alu on alu.alumno=cer.alumno
-  where fecha_egreso >'${fecha_i}' and fecha_egreso <'${fecha_f}' and certificado in (${car_q})
+  where cer.anulado=0 and fecha_egreso >'${fecha_i}' and fecha_egreso <'${fecha_f}' and certificado in (${car_q})
   order by certificado,nameC,fecha_egreso
 `
 
@@ -269,7 +274,7 @@ const cantidadEgrAnioPropuestas = async (anio, lapso) => {
     let sqlstr = `select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta, count(certificado)
     , sexo from negocio.sga_certificados_otorg cert
     inner join negocio.mdp_personas mp on mp.persona=cert.persona
-    where fecha_egreso >='${fecha_i}' and fecha_egreso<='${fecha_f}' and certificado in(3,4,5,6,7,9)
+    where cert.anulado=0 and fecha_egreso >='${fecha_i}' and fecha_egreso<='${fecha_f}' and certificado in(3,4,5,6,7,9)
     group by certificado,sexo
     `
 
@@ -360,6 +365,7 @@ export const obtenerCertificadosPorAnio=async (req, res)=> {
           SELECT COUNT(*) AS cantidad
           FROM negocio.sga_certificados_otorg sco
           WHERE certificado IN (3,4,5,6,7,9,16)
+            AND sco.anulado = 0
             AND fecha_egreso >= $1
             AND fecha_egreso <= $2
         `;

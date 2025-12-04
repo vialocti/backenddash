@@ -194,7 +194,7 @@ export const traerRechazadosBajaActividad = async (anio,sede,actividad,pgenerico
 
 export const enviarDatos=(datosCompara) =>{
  
-    console.log(datosCompara)
+    //console.log(datosCompara)
 
 }
 
@@ -253,9 +253,9 @@ export const tratarExamenes =(datos)=>{
         let datoComision=null
     
         datoComision= await traerDatosComision(element.comision)
-        console.log(datoComision)    
+        //console.log(datoComision)    
         alumnosInc = await  buscarIncriptos(element.comision)        
-        console.log(alumnosInc)       
+       // console.log(alumnosInc)       
         setTimeout(()=>console.log('-------------------'),200)
     });
 }

@@ -321,15 +321,21 @@ async function obtenerDatosAlumno(row, modo = 'I') {
  * calcula datos adicionales y actualiza la misma tabla.
  */
 async function infoOne(tp) {
+  
+  try{
   let sqlwhere = tp === 'P' ? `WHERE anio_ingreso_pro IS NULL` : '';
   const sqlSelect = `SELECT alumno, persona, ubicacion, propuesta, legajo, plan FROM fce_per.alumnos_info ${sqlwhere}`;
+ 
   const result = await coneccionDB.query(sqlSelect);
 
   console.log("Cantidad de registros:", result.rowCount);
-
-  for (const row of result.rows) {
+  //console.log(result)
+  if(result.rowCount>0){
+    
+  
+    for (const row of result.rows) {
     const datos = await obtenerDatosAlumno(row, 'I');
-
+    console.log(datos)
     const sqlUpdate = `
       UPDATE fce_per.alumnos_info
       SET 
@@ -361,8 +367,11 @@ async function infoOne(tp) {
 
     await coneccionDB.query(sqlUpdate, values);
   }
-
+}
   return { message: 'Actualización completada' };
+  }catch(error){
+    console.log(error)
+  }
 }
 
 
@@ -442,7 +451,7 @@ async function materiasAprobadas(alumno, anio) {
       params = [alumno,anio];
     }
     // console.log(sql);
-    console.log(params)
+    // console.log(params)
     const result = await coneccionDB.query(sql,params);
     
     
@@ -644,7 +653,7 @@ async function traerRegulares(alumno, plan, anio) {
         params = [alumno];
       }
     } else {
-      console.log('O');
+     // console.log('O');
       // Si no se define otro comportamiento para anio distinto de 0, se retorna "0"
       return "0";
     }
@@ -667,11 +676,12 @@ async function traerRegulares(alumno, plan, anio) {
  */
 export const processInfo_One = async (req, res) => {
   const {tp,etapa} = req.params
-//  console.log(`Procesando infoOne con tipo: ${tp} y etapa: ${etapa}`);
+console.log(`Procesando infoOne con tipo: ${tp} y etapa: ${etapa}`);
   try {
     if(etapa==='A'){
       const result = await infoOneAct();
     }else{
+      
       const result = await infoOne(tp);
     }
     res.json(result);
@@ -716,13 +726,13 @@ export const setCompletadoProp = async (req, res) => {
 
   // Calcular porcentaje
   if (matapro > 0) {
-    console.log(matplanproT, matapro, propuesta, plan);
+   // console.log(matplanproT, matapro, propuesta, plan);
     porcentaje = Math.round((matapro / matplanproT) * 100);
   } else {
     porcentaje = 0;
   }
 
-  console.log(`Porcentaje calculado: ${porcentaje}`);
+  //console.log(`Porcentaje calculado: ${porcentaje}`);
 
   // Ahora hacemos el update en la base de datos
   try {
@@ -765,13 +775,13 @@ export const calcularAproAnio = async (req, res) => {
     `;
     const result = await coneccionDB.query(sql);
 
-    console.log(`Procesando ${result.rows.length} alumnos...`);
+    //console.log(`Procesando ${result.rows.length} alumnos...`);
     console.time("Procesamiento alumnos");
 
     await procesarAlumnosPorLotes(result.rows, fecha, 10);
 
     console.timeEnd("Procesamiento alumnos");
-    console.log('fin')
+    //console.log('fin')
     res.send({ message: 'Fin Proceso' });
   } catch (error) {
     console.error("Error en calcularAproAnio:", error);
@@ -797,7 +807,7 @@ async function procesarAlumnosPorLotes(alumnos, fecha, batchSize = 10) {
 
 // Función para materias aprobadas según año (histórico)
 async function verMatAnio(alumno,plan, fecha) {
-  console.log(fecha)
+  //console.log(fecha)
   let condicionActividad = '';
 if (plan === 17) {
   condicionActividad = `actividad_codigo LIKE '02%'`
@@ -839,6 +849,9 @@ if (plan === 17) {
       SET aniounoap = $1, aniodosap = $2, aniotresap = $3, aniocuatroap = $4, aniocincoap = $5
       WHERE alumno = $6
     `;
+    if(alumno===33498){
+      console.log(uno, dos, tres, cuatro, cinco,fecha)
+    }
     await coneccionDB.query(sqlu, [uno, dos, tres, cuatro, cinco, alumno]);
     return 
   } catch (error) {
@@ -906,7 +919,7 @@ export const  aniocursada19 = async(req,res)=> {
   const {tipo, tipoO}=req.params
    let whereext=tipoO==='P'?' AND aniocursada is null ': ''
   try {
-    console.log(tipo)
+  //  console.log(tipo)
 
     // Consulta para obtener los alumnos con plan 12, 13 o 14 o 17
     const sqlSelect = `
@@ -944,7 +957,7 @@ export const  aniocursada19 = async(req,res)=> {
           WHERE alumno = $2
         `;
       } else {
-        console.log("Tipo no reconocido:", tipo);
+       // console.log("Tipo no reconocido:", tipo);
         continue;
       }
       //console.log(anioC19, row.alumno)
@@ -1045,7 +1058,7 @@ const actividadTroncal =async(anio,alumno)=>{
   let sqlstr=`SELECT COUNT(*) as nrotroncal FROM negocio.vw_hist_academica  WHERE resultado='A' AND alumno =${alumno}`
   if (anio===3){
     sqlstr += ` AND actividad_codigo in ('02370', '02375')`
-    console.log(sqlstr)
+  //  console.log(sqlstr)
      const resu = await coneccionDB.query(sqlstr)
      if (resu.rows[0].nrotroncal > 1){
       return true
@@ -1053,7 +1066,7 @@ const actividadTroncal =async(anio,alumno)=>{
 
   }else if(anio===2){
     sqlstr += ` AND actividad_codigo in ('02270', '02275')`
-    console.log(sqlstr)
+   // console.log(sqlstr)
     const resu = await coneccionDB.query(sqlstr)
     if (resu.rows[0].nrotroncal > 1){
       return true
@@ -1195,7 +1208,7 @@ export const  aniocursada98= async (req,res)=> {
           WHERE alumno = $2
         `;
       } else {
-        console.log("Tipo no reconocido:", tipo);
+    //    console.log("Tipo no reconocido:", tipo);
         continue;
       }
       // Ejecutar la actualización utilizando parámetros para evitar inyección SQL
@@ -1245,9 +1258,16 @@ export const calculoVelocidad=async(req, res)=> {
       let calculotiempo;
       if(aprobadas>0 && nrobimestres>0 || regulares>0 && nrobimestres>0){
             if (aprobadas > 0 && regulares > 0) {
+              if(aprobadas>regulares){
+                calculotiempo = idealExamen / aprobadas;
+               // console.log(calculotiempo,aprobadas,idealExamen,regulares,row.alumno)
+              }else{
               calculotiempo = (idealExamen / aprobadas) * 0.7 + (idealCursadas / regulares) * 0.3;
-            } else if (aprobadas > 0 && regulares === 0 || aprobadas > regulares) {
+              }
+            } else if (aprobadas > 0 && regulares === 0) {
+              
               calculotiempo = idealExamen / aprobadas;
+              //console.log(calculotiempo,aprobadas,idealExamen,regulares,row.alumno)
             } else if (aprobadas === 0 && regulares > 0) {
               calculotiempo = idealExamen * 2 * 0.7 + (idealCursadas / regulares) * 0.3;
             } else {

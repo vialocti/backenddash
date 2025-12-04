@@ -17,7 +17,7 @@ import { convertirDatosNew } from './cursadasControllers.js'
 
 
 const grabarRegistro= async(registro, actividad,codsede,recursado,anio)=>{
-  console.log(registro)
+ // console.log(registro)
   const {propuesta,comision,nombre, total,regular,reprobado,ausente,promocionado,porccentajeR, porccentajeP,periodo,codmat} = registro
 
 
@@ -89,7 +89,7 @@ return
 
 export const resultadoDetallesporComisionesH = async (anio, ncomisiones, codsede, actividad, recursado) => {
   try {
-    console.log(`Procesando: año=${anio}, comisiones=${ncomisiones}, sede=${codsede}, actividad=${actividad}, recursado=${recursado}`);
+  //  console.log(`Procesando: año=${anio}, comisiones=${ncomisiones}, sede=${codsede}, actividad=${actividad}, recursado=${recursado}`);
 
     const conrecu = recursado === 'N'
       ? `AND NOT UPPER(sc.nombre) LIKE('%RECUR%')`
@@ -126,7 +126,7 @@ export const resultadoDetallesporComisionesH = async (anio, ncomisiones, codsede
     for (const registro of arrayDatos) {
       try {
         await grabarRegistro(registro, actividad,codsede,recursado,anio); // <-- tu función para grabar
-        console.log(`Grabado comision ${registro.comision}`);
+       // console.log(`Grabado comision ${registro.comision}`);
       } catch (error) {
         console.error(`Error al grabar comisión ${dato.comision}:`, error.message);
       }
@@ -244,7 +244,7 @@ export const grabardatosCursadas = async (req, res) => {
       );
     }));
 
-    console.log('Procesamiento finalizado');
+    //console.log('Procesamiento finalizado');
     res.status(201).send({ message: 'OK', cantidad: resultados.length });
 
   } catch (error) {
@@ -270,7 +270,7 @@ export const traerFechaInicioIndices =async (comision)=>{
     let anioI = fecha.fecha_fin_dictado.getFullYear()
     let mes = fecha.fecha_fin_dictado.getMonth() + 1
     let dia = fecha.fecha_fin_dictado.getDate()
-    let anioF= anioI + 2
+    let anioF= anioI + 1
 
     if(dia<10){
       dia='0' + dia
@@ -292,19 +292,20 @@ export const traerFechaInicioIndices =async (comision)=>{
 
 
 
-const traerExamenAprobadosComision=async (anio, comision,codmat, ciclo)=>{
+const traerExamenAprobadosComision=async (anio, comision,propuesta,codmat, ciclo)=>{
 
   const fechas = await traerFechaInicioIndices(comision)
- //console.log(anio,comision,codmat,ciclo)
+ //console.log(anio,comision,propuesta,codmat,ciclo)
   try {
       let sqlstr=''
       if (ciclo=== 2){
       sqlstr=`select count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
           select distinct sic.alumno from negocio.sga_insc_cursada sic 
+          inner join negocio.sga_alumnos sa ON sa.alumno = sic.alumno
           inner join negocio.sga_comisiones sc on sc.comision=sic.comision
           inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
           inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
-          where sp.anio_academico =${anio} and sc.comision=${comision}
+          where sp.anio_academico =${anio} and sc.comision=${comision} AND propuesta = ${propuesta}
           ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
           
       `
@@ -312,10 +313,11 @@ const traerExamenAprobadosComision=async (anio, comision,codmat, ciclo)=>{
 
       sqlstr=`select fecha,turno_examen_nombre, count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
           select distinct sic.alumno from negocio.sga_insc_cursada sic 
+          inner join negocio.sga_alumnos sa ON sa.alumno = sic.alumno
           inner join negocio.sga_comisiones sc on sc.comision=sic.comision
           inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo 
           inner join negocio.sga_periodos sp on sp.periodo =spl.periodo 
-          where sp.anio_academico =${anio} and sc.comision=${comision}
+          where sp.anio_academico =${anio} and sc.comision=${comision} AND propuesta=${propuesta}
           ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
           group by fecha,turno_examen_nombre
           order by fecha`
@@ -334,7 +336,7 @@ const traerExamenAprobadosComision=async (anio, comision,codmat, ciclo)=>{
 
         
   } catch (error) {
-      console.log(error)
+      console.log(error, sqlstr)
   }
 
 }
@@ -361,12 +363,16 @@ try {
 /////
 ////
 const actualizar_datos=async (id, aprobadase1,aprobadase2)=>{
-
+ if (!aprobadase1){aprobadase1=0}
+ if (!aprobadase2){aprobadase2=0}
+  //console.log(aprobadase1,aprobadase1)
   let sqlu=`UPDATE fce_per.dash_actividad_resultados SET aprobadase1=${aprobadase1}, aprobadase2=${aprobadase2} WHERE id=${id}`
+  
   try {
     const resu= await coneccionDB.query(sqlu)
     return 'ok'
   } catch (error) {
+   
     console.log(error)
   }
 
@@ -450,6 +456,75 @@ try {
 }
 
 }
+
+
+
+////Nueva Grabar materias Aprobadas ciclo corto y ciclo largo
+/*
+export const grabarMateriasAprobadasCiclo =async (req,res)=>{
+  const {anio,sede}=req.params
+
+  let sqlstr = `select comision, codmat, propuesta, id   from fce_per.dash_actividad_resultados where anio_academico=${anio} and sede='${sede}'`
+
+  try {
+    const result = await coneccionDB.query(sqlstr)
+    if (result.rows){
+      result.rows.forEach( async element=>{
+       // console.log(anio,element.propuesta)
+        let aprobadase1 = await traerExamenAprobadosComision(anio,element.comision, element.propuesta, element.codmat,1)
+        let aprobadase2 = await traerExamenAprobadosComision(anio,element.comision, element.propuesta, element.codmat,2)
+        const promocionados=await traerPromocionados(element.id)
+        aprobadase1+=parseInt(promocionados)
+        aprobadase2+=parseInt(promocionados)
+        const resu = await actualizar_datos(element.id, aprobadase1,aprobadase2)
+        //console.log(resu)
+      })
+    }
+   return({message:'Ok'})
+  } catch (error) { 
+    console.log(error)
+  } 
+
+}
+*/
+
+/////////
+export const grabarMateriasAprobadasCiclo = async (req, res) => {
+  const { anio, sede } = req.params;
+
+  const sqlstr = `
+    SELECT comision, codmat, propuesta, id 
+    FROM fce_per.dash_actividad_resultados 
+    WHERE anio_academico = $1 AND sede = $2
+  `;
+
+  try {
+    const result = await coneccionDB.query(sqlstr, [anio, sede]);
+
+    for (const element of result.rows) {
+      let aprobadase1 = await traerExamenAprobadosComision(anio, element.comision, element.propuesta, element.codmat, 1);
+      let aprobadase2 = await traerExamenAprobadosComision(anio, element.comision, element.propuesta, element.codmat, 2);
+      const promocionados = await traerPromocionados(element.id);
+
+      aprobadase1 += parseInt(promocionados);
+      aprobadase2 += parseInt(promocionados);
+
+      await actualizar_datos(element.id, aprobadase1, aprobadase2);
+    }
+
+    return res.json({ message: 'Ok' });
+
+  } catch (error) {
+    console.error("Error en grabarMateriasAprobadasCiclo:", error);
+    return res.status(500).json({ error: 'Error procesando materias aprobadas' });
+  }
+};
+
+
+
+//////////
+
+
 
 
 ///buscar comisiones en archivo
@@ -650,7 +725,8 @@ const tratarQry=(alumnos)=>{
       seis:alumnos.filter(alumno => alumno.total_aprobadas==='6').length,
       siete:alumnos.filter(alumno => alumno.total_aprobadas==='7').length,
       ocho:alumnos.filter(alumno => alumno.total_aprobadas==='8').length,
-      nueve:alumnos.filter(alumno => parseInt(alumno.total_aprobadas)>8).length,
+      nueve:alumnos.filter(alumno => alumno.total_aprobadas==='9').length,
+      nuevemas:alumnos.filter(alumno => parseInt(alumno.total_aprobadas)>9).length,
 
   }
   tabla.push(datos)
@@ -658,8 +734,12 @@ const tratarQry=(alumnos)=>{
 }
 
 ////
-const convertirMatriz=(datola, datole, datocpn,datollo, datolaAnt, datoleAnt, datocpnAnt,datolloAnt)=>{
+const convertirMatriz=(datola, datole, datocpn,datollo, datolaAnt, datoleAnt, datocpnAnt,datolloAnt, datolaAnt1, datoleAnt1, datocpnAnt1,datolloAnt1)=>{
   const matriz=[] 
+  matriz.push(datolloAnt1)
+  matriz.push(datocpnAnt1)
+  matriz.push(datolaAnt1)
+  matriz.push(datoleAnt1)
   matriz.push(datolloAnt)
   matriz.push(datocpnAnt)
   matriz.push(datolaAnt)
@@ -674,6 +754,7 @@ const convertirMatriz=(datola, datole, datocpn,datollo, datolaAnt, datoleAnt, da
 }
 
 const cargarDatos = async(anio,sede,propuesta,fecha)=>{
+ 
   let ubi='1'
   if (sede===0){
     ubi='1,2'
@@ -760,10 +841,12 @@ export const generarReporteAprobadasAnioUno =async (req, res)=>{
   const {anio, sede, fecha} = req.params
   let fechaA='0'
   let fechaAP='0'
+   let fechaAP1='0'
 
   if (fecha !== '0'){
     fechaA=fecha
     fechaAP = fechaA.replace(anio, anio-1);
+    fechaAP1=  fechaA.replace(anio, anio-2);
     //console.log(fechaA, fechaAP)
   }
 
@@ -772,7 +855,7 @@ export const generarReporteAprobadasAnioUno =async (req, res)=>{
   
   if (parseInt(sede)===0){
     //console.log('hola')
-    const [datola, datole, datocpn, datollo, datolaAnt, datoleAnt, datocpnAnt, datolloAnt] = await Promise.all([
+    const [datola, datole, datocpn, datollo, datolaAnt, datoleAnt, datocpnAnt, datolloAnt,datolaAnt1, datoleAnt1, datocpnAnt1, datolloAnt1] = await Promise.all([
       cargarDatos(anio, sede, 2,fechaA),
       cargarDatos(anio, sede, 3,fechaA),
       cargarDatos(anio, sede, 7, fechaA),
@@ -781,14 +864,20 @@ export const generarReporteAprobadasAnioUno =async (req, res)=>{
       cargarDatos(anio-1, sede, 3, fechaAP),
       cargarDatos(anio-1, sede, 7, fechaAP),
       cargarDatos(anio-1, sede, 8, fechaAP),
+      cargarDatos(anio-2, sede, 2, fechaAP1),
+      cargarDatos(anio-2, sede, 3, fechaAP1),
+      cargarDatos(anio-2, sede, 7, fechaAP1),
+      cargarDatos(anio-2, sede, 8, fechaAP1),
     ]);
 
-    //console.log(datola)
-    const matriz= convertirMatriz(datola[0], datole[0], datocpn[0],datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0],datolloAnt[0])
+    //console.log(datola[0], datole[0], datocpn[0],datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0],datolloAnt[0], datolaAnt1[0], datoleAnt1[0], datocpnAnt1[0],datolloAnt1[0])
+    const matriz= convertirMatriz(datola[0], datole[0], datocpn[0],datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0],datolloAnt[0], datolaAnt1[0], datoleAnt1[0], datocpnAnt1[0],datolloAnt1[0])
+   
     if (matriz[0]==='N'){
       res.send([])
     }else{
-    res.send(matriz)
+    //console.log(matriz)
+    res.send(matriz.filter(item => item !== 'N'))
     }
   }
   }catch(error){
@@ -1339,7 +1428,7 @@ order by contacto`
 
 try {
   const result = await coneccionDB.query(sqlstr,[comision]);
-  console.log(comision,result.rows)
+  //console.log(comision,result.rows)
   if (result.rowCount === 1) {
     return result.rows[0].contacto;
 } else if (result.rowCount > 1) {
@@ -1411,8 +1500,8 @@ export const deleteTablesIndices =async(req, res)=>{
   try {
     const resu1 = await coneccionDB.query('TRUNCATE fce_per.dash_actividad_resultados')
     const resu2 = await coneccionDB.query('TRUNCATE fce_per.dash_indices_total')
-    console.log(resu1)
-    console.log(resu2)
+   // console.log(resu1)
+    //console.log(resu2)
     res.send({message:'ok'})
 
   } catch (error) {

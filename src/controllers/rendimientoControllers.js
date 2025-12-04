@@ -105,6 +105,153 @@ export const traerCantidadInscriptosTotalfceper = async (req, res) =>{
 //////PROCESAR INDICES ACTIVIDADES -> A INDICES TOAL SEDES
 /////2da parte procesar datos
 
+// Este es el nuevo procedimiento grabarIndiceTotal que ahora incluye 'propuesta'
+const grabarIndiceTotal = async (registro) => {
+    const {
+        anio,
+        sede,
+        propuesta, // <-- Nuevo: Agregamos propuesta
+        periodo,
+        totai,
+        totalr,
+        totallb,
+        totallibas,
+        tpromo,
+        taprob1,
+        taprob2,
+        indicecur,
+        indiceccorto,
+        indiceclargo
+    } = registro;
+
+    try {
+        let sqlI = 'INSERT INTO fce_per.dash_indices_total (anio_academico, sede, propuesta, periodo, "totalInscriptos", "totalRegulares", "totalDesaprobados", "totalAusentes", "totalPromocionados", totalaprobadascc, totalaprobadascl, promedioindicecursada, promedioindicecorto, promedioindicelargo) VALUES(';
+        sqlI = sqlI + anio + "," + sede + "," + propuesta + ",'" + periodo + "'," + totai + "," + totalr + "," + totallb + "," + totallibas + "," + tpromo + "," + taprob1 + ", " + taprob2 + "," + indicecur + "," + indiceccorto + "," + indiceclargo + ")";
+        //console.log(sqlI);
+        const result = await coneccionDB.query(sqlI);
+        if (result.rowCount === 1) {
+            return `Registro para la propuesta ${propuesta} guardado`;
+        }
+    } catch (error) {
+        console.log(error);
+        return `Error servicio para la propuesta ${propuesta}: posible clave duplicada`;
+    }
+};
+
+// Este es el nuevo procedimiento procesarDatosIndices
+const procesarDatosIndices = async (datosI) => {
+    // Los nombres de las columnas en la consulta son distintos
+    // a los nombres que se usan en la funcion procesarDatosIndices
+    // (Ej: 'total_inscriptos' vs 'toti')
+    // por eso se renombran los campos para hacer el codigo mas claro
+    const toti = datosI.total_inscriptos;
+    const tregu = datosI.totales_regulares;
+    const tlibre = datosI.totales_reprobados;
+    const tlibreast = datosI.totales_ausentes;
+    const tpromocionados = datosI.totales_promocionados;
+    const tapro1 = datosI.totales_aprobados_e1;
+    const tapro2 = datosI.totales_aprobados_e2;
+
+    // Se agrega el campo 'propuesta'
+    const anio = datosI.anio_academico;
+    const sede = datosI.sede;
+    const propuesta = datosI.propuesta;
+
+    // Las relaciones se calculan solo si hay inscriptos para evitar division por cero
+    let relapromo = toti > 0 ? tpromocionados / toti : 0;
+    let relaregu = toti > 0 ? (parseInt(tpromocionados) + parseInt(tregu)) / toti : 0;
+    let relaccorto = toti > 0 ? tapro1 / toti : 0;
+    let relaclargo = toti > 0 ? tapro2 / toti : 0;
+
+    //console.log(relapromo, relaccorto, relaclargo, relaregu);
+
+    let proindicecursada = relaregu * 0.7 + relapromo * 0.3;
+    let proindiceccorto = relaregu * 0.7 + relaccorto * 0.3;
+    let proindiceclargo = relaregu * 0.7 + relaclargo * 0.3;
+
+    try {
+        const datosp = {
+            anio: anio,
+            sede: sede,
+            propuesta: propuesta, // <-- Nuevo: Agregamos propuesta
+            periodo: 'A',
+            totai: toti,
+            totalr: tregu-tpromocionados,
+            totallb: tlibre,
+            totallibas: tlibreast,
+            tpromo: tpromocionados,
+            taprob1: tapro1,
+            taprob2: tapro2,
+            indicecur: proindicecursada.toFixed(3),
+            indiceccorto: proindiceccorto.toFixed(3),
+            indiceclargo: proindiceclargo.toFixed(3)
+        };
+        return datosp;
+    } catch (error) {
+        console.log(error);
+    }
+};
+
+// El procedimiento procesarIndicesTot, modificado para manejar multiples registros
+export const procesarIndicesTot = async (req, res) => {
+    const {
+        anio,
+        sede
+    } = req.params;
+    let sqlstr = `SELECT
+        sede,
+        anio_academico,
+        propuesta,
+        SUM(total_inscriptos) AS total_inscriptos,
+        SUM(regulares) AS totales_regulares,
+        SUM(reprobados) AS totales_reprobados,
+        SUM(ausentes) AS totales_ausentes,
+        SUM(promocionados) AS totales_promocionados,
+        SUM(aprobadase1) AS totales_aprobados_e1,
+        SUM(aprobadase2) AS totales_aprobados_e2
+        FROM
+        fce_per.dash_actividad_resultados
+        WHERE
+        anio_academico = $1
+        and sede = $2
+        GROUP BY
+        sede,
+        anio_academico,
+        propuesta
+        ORDER BY
+        anio_academico,
+        sede,
+        propuesta;`;
+    try {
+        const resu = await coneccionDB.query(sqlstr, [anio, sede]);
+        // Arreglo para guardar los resultados de las inserciones
+        const resultadosInsercion = [];
+
+        // Itera sobre cada fila (registro) obtenida de la base de datos
+        for (const registro of resu.rows) {
+            // Procesa los datos de cada registro de forma individual
+            const resultado = await procesarDatosIndices(registro);
+            // Graba cada registro procesado
+            const resuinsert = await grabarIndiceTotal(resultado);
+            resultadosInsercion.push(resuinsert);
+        }
+
+        // Envía el array de resultados de la insercion
+        res.send({
+            message: "Proceso completado",
+            results: resultadosInsercion
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({
+            message: "Error en el servidor al procesar los datos."
+        });
+    }
+};
+
+
+/*
 const grabarIndiceTotal= async(registro)=>{
     const {anio, sede,periodo ,totai,totalr,totallb,totallibas,tpromo,taprob1, taprob2,indicecur,indiceccorto, indiceclargo} = registro
 
@@ -130,7 +277,7 @@ const grabarIndiceTotal= async(registro)=>{
   }
 
 
-const procesarDatosIndices=async (datosI,anio,sede)=>{
+const procesarDatosIndices=async (datosI)=>{
     
     
     let relapromo=datosI.tpromocionados / datosI.toti
@@ -146,6 +293,7 @@ const procesarDatosIndices=async (datosI,anio,sede)=>{
         const datosp={
         anio:anio,
         sede:sede,
+        propuesta:propuesta,
         periodo:'A',
         totai:datosI.toti,
         totalr:datosI.tregu,
@@ -170,13 +318,35 @@ const procesarDatosIndices=async (datosI,anio,sede)=>{
 export const procesarIndicesTot = async (req, res) =>{
 
     const {anio,sede} = req.params;
-      let sqlstr=`select sum(total_inscriptos) as toti, sum(regulares) as tregu, sum(reprobados ) as tlibre,
-        sum(ausentes) as tlibreast, sum(promocionados) as tpromocionados, sum(aprobadase1 ) as tapro1, sum(aprobadase2 ) as tapro2, avg(relacion_regular )
-        from fce_per.dash_actividad_resultados dar where anio_academico=$1 and sede=$2`
+      let sqlstr=`SELECT
+    sede,
+    anio_academico,
+    propuesta,
+    SUM(total_inscriptos) AS total_inscriptos,
+    SUM(regulares) AS totales_regulares,
+    SUM(reprobados) AS totales_reprobados,
+    SUM(ausentes) AS totales_ausentes,
+    SUM(promocionados) AS totales_promocionados,
+    SUM(aprobadase1) AS totales_aprobados_e1,
+    SUM(aprobadase2) AS totales_aprobados_e2,
+    AVG(relacion_regular) AS promedio_relacion_regular
+FROM
+    fce_per.dash_actividad_resultados
+WHERE
+    anio_academico = $1
+    and sede = $2
+GROUP BY
+    sede,
+    anio_academico,
+    propuesta
+ORDER BY
+    anio_academico,
+    sede,
+    propuesta;`
     try {
        
         const resu = await coneccionDB.query(sqlstr,[anio,sede])
-        const resultado = await procesarDatosIndices(resu.rows[0],anio,sede)
+        const resultado = await procesarDatosIndices(resu.rows)
         const resuinsert = await grabarIndiceTotal(resultado)
         //console.log(resuinsert)
 
@@ -185,7 +355,7 @@ export const procesarIndicesTot = async (req, res) =>{
         console.log(error)   
     }
 }
-
+*/
 
 //////
 
@@ -213,7 +383,7 @@ const buscarDatosIndiceT= async (anio)=>{
   try {
      
       const resu = await coneccionDB.query(sqlstr,[anio])
-
+    
       return resu.rows
   } catch (error) {
       console.log(error)   
@@ -221,6 +391,67 @@ const buscarDatosIndiceT= async (anio)=>{
 
 }
 
+//////----------------------------------------------/////
+
+// controllers/indicesController.js
+//import { pool } from '../db.js';
+
+export const getIndices = async (req, res) => {
+  const { anios, tipo } = req.query;
+  // anios puede ser un array o string "2023,2024"
+
+  let groupBy = '';
+  let selectCols = '';
+
+  switch (tipo) {
+    case 'propuesta':
+      groupBy = 'propuesta';
+      selectCols = 'propuesta';
+      break;
+    case 'sede':
+      groupBy = 'sede';
+      selectCols = 'sede';
+      break;
+    case 'anio_propuesta':
+      groupBy = 'anio_academico, propuesta';
+      selectCols = 'anio_academico, propuesta';
+      break;
+    case 'anio_sede':
+      groupBy = 'anio_academico, sede';
+      selectCols = 'anio_academico, sede';
+      break;
+    default:
+      return res.status(400).json({ error: 'Tipo de agrupación inválido' });
+  }
+
+  const sql = `
+    SELECT ${selectCols},
+      CAST(SUM("totalInscriptos") AS numeric) AS "totalInscriptos",
+      SUM("totalRegulares") AS "totalRegulares",
+      SUM("totalDesaprobados") AS "totalDesaprobados",
+      SUM("totalAusentes") AS "totalAusentes",
+      SUM("totalPromocionados") AS "totalPromocionados",
+      SUM(totalaprobadascc) AS totalaprobadascc,
+      SUM(totalaprobadascl) AS totalaprobadascl
+    FROM fce_per.dash_indices_total
+    WHERE anio_academico = ANY($1)
+    GROUP BY ${groupBy}
+    ORDER BY ${groupBy};
+  `;
+
+  try {
+    const { rows } = await coneccionDB.query(sql, [anios.split(',')]);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error ejecutando la query' });
+  }
+};
+
+
+
+
+//////-----------------------------------------------////
 
 ////-------------------------------///
 
@@ -233,10 +464,13 @@ export const traerIndiceTotalAnios = async(req,res)=>{
      
      for( let i = parseInt(anioI);i<parseInt(anioF)+1; i++){
          let datosAnio = await buscarDatosIndiceT(i) 
+         let regularesT=parseInt(datosAnio[0].totalRegulares) + parseInt(datosAnio[0].totalPromocionados)
+         let totalcc= parseInt(datosAnio[0].totalaprobadascc) + parseInt(datosAnio[0].totalPromocionados)
+         let totalcl= parseInt(datosAnio[0].totalaprobadascl) + parseInt(datosAnio[0].totalPromocionados)
          datosAnio[0].anio_academico=i
-         datosAnio[0].promedioindicecursada= (datosAnio[0].totalRegulares/datosAnio[0].totalInscriptos * 0.7 + datosAnio[0].totalPromocionados/datosAnio[0].totalInscriptos * 0.3).toFixed(3)
-         datosAnio[0].promedioindicecorto= (datosAnio[0].totalRegulares/datosAnio[0].totalInscriptos * 0.7 + (datosAnio[0].totalPromocionados/datosAnio[0].totalInscriptos + datosAnio[0].totalaprobadascc/datosAnio[0].totalInscriptos)   * 0.3).toFixed(3)
-         datosAnio[0].promedioindicelargo= (datosAnio[0].totalRegulares/datosAnio[0].totalInscriptos * 0.7 + (datosAnio[0].totalPromocionados/datosAnio[0].totalInscriptos + datosAnio[0].totalaprobadascc/datosAnio[0].totalInscriptos + datosAnio[0].totalaprobadascl/datosAnio[0].totalInscriptos) * 0.3).toFixed(3)
+         datosAnio[0].promedioindicecursada= ((regularesT/datosAnio[0].totalInscriptos ) * 0.7 + (datosAnio[0].totalPromocionados/datosAnio[0].totalInscriptos) * 0.3).toFixed(3)
+         datosAnio[0].promedioindicecorto= ((regularesT/datosAnio[0].totalInscriptos) * 0.7  + (totalcc /datosAnio[0].totalInscriptos) * 0.3 ).toFixed(3)
+         datosAnio[0].promedioindicelargo= ((regularesT/datosAnio[0].totalInscriptos) * 0.7  + (totalcl/datosAnio[0].totalInscriptos) * 0.3).toFixed(3)
 
          listaInd.push(datosAnio[0])
      } 
@@ -521,7 +755,7 @@ export async function actualizarAniosCursada() {
       }
     }
 
-    console.log('Actualización completa de aniocursada.');
+    res.send({message:'Actualización completa de aniocursada.'});
 
   } catch (error) {
     console.error('Error al actualizar aniocursada:', error);
@@ -568,7 +802,7 @@ export async function actualizarPerdidaRegularidad(req,res) {
       
     }
 
-    console.log('Actualización completa de perdida regularidad.');
+    res.send({message:'Actualización completa de perdida regularidad.'});
 
   } catch (error) {
     console.error('Error al actualizar perdida:', error);
@@ -749,4 +983,80 @@ export async function getAnalisisAlumnos(req, res) {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
+
+
+
+
+//nuevo analisis de indice de cursadas
+
+
+export const traerComisionesIndicesAnioLectivo=async (req,res)=>{
+
+  const {anio} = req.params
+
+  const sqlstr =`select  dar.anio_academico , CASE 
+          WHEN sede = 1 THEN 'MZA'
+          WHEN sede = 2 THEN 'SRF'
+          WHEN sede = 4 THEN 'ESTE'
+        END AS sede,
+        periodo,
+        CASE
+          WHEN propuesta = 1 THEN 'CPN' 
+          WHEN propuesta = 2 THEN 'LA' 
+          WHEN propuesta = 3 THEN 'LE'
+          WHEN propuesta = 7 THEN 'LLO'
+          WHEN propuesta = 8 THEN 'CP'
+          ELSE 'Otra'
+        END AS carrera,
+        actividad_nombre,
+        nombre, dar.total_inscriptos, (dar.regulares - dar.promocionados) as regular  ,dar.reprobados  ,dar.ausentes, dar.promocionados ,dar.relacion_regular, 
+        dar.relacion_promocion, dar.indice_cursada, dar.indice_e1 , dar.indice_e2    		     
+        from fce_per.dash_actividad_resultados dar 
+        where propuesta in (1,2,3,8,7) and dar.indice_cursada > 0 and anio_academico=$1;`
+
+  try {
+    const resu = await coneccionDB.query(sqlstr,[anio])
+        res.send(resu.rows)
+  } catch (error) {
+    console.log(error)
+  }
+
+
+}
+
+
+
+export const traerComisionesIndicesAnioLectivoI0=async (req,res)=>{
+
+  const {anio} = req.params
+
+  const sqlstr =`select  dar.anio_academico , CASE 
+          WHEN sede = 1 THEN 'MZA'
+          WHEN sede = 2 THEN 'SRF'
+          WHEN sede = 4 THEN 'ESTE'
+        END AS sede,
+        periodo,
+        CASE
+          WHEN propuesta = 1 THEN 'CPN' 
+          WHEN propuesta = 2 THEN 'LA' 
+          WHEN propuesta = 3 THEN 'LE'
+          WHEN propuesta = 7 THEN 'LLO'
+          WHEN propuesta = 8 THEN 'CP'
+          ELSE 'Otra'
+        END AS carrera,
+        actividad_nombre,
+        nombre, dar.total_inscriptos, (dar.regulares - dar.promocionados) as regular  ,dar.reprobados  ,dar.ausentes, dar.promocionados ,dar.relacion_regular, 
+        dar.relacion_promocion, dar.indice_cursada, dar.indice_e1 , dar.indice_e2    		     
+        from fce_per.dash_actividad_resultados dar 
+        where propuesta in (1,2,3,8,7) and dar.indice_cursada = 0 and anio_academico=$1;`
+
+  try {
+    const resu = await coneccionDB.query(sqlstr,[anio])
+        res.send(resu.rows)
+  } catch (error) {
+    console.log(error)
+  }
+
+}
+
 

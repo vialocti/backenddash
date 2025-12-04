@@ -176,7 +176,7 @@ export const getIscriptosTipoIngresoSedeSexo = async (req, res) => {
     let injoin = 'INNER JOIN negocio.mdp_personas as per on per.persona=pas.persona '
     let condi = `WHERE anio_academico=${anio} AND ubicacion=${sede} AND ${tipoIngreso} AND per.sexo='${sexo}'`
     let strquery = `${cabeza}${injoin}${condi}`
-    console.log(strquery)
+    //console.log(strquery)
     try {
 
         const resu = await coneccionDB.query(strquery)
@@ -202,7 +202,7 @@ export const getIscriptosTipoIngresoSedeSexoCarrera = async (req, res) => {
     let injoin = 'INNER JOIN negocio.mdp_personas as per on per.persona=pas.persona '
     let condi = `WHERE anio_academico=${anio} AND ubicacion=${sede} AND ${tipoIngreso} AND per.sexo='${sexo}' and propuesta=${carrera}`
     let strquery = `${cabeza}${injoin}${condi}`
-    console.log(strquery)
+    //console.log(strquery)
     try {
 
         const resu = await coneccionDB.query(strquery)

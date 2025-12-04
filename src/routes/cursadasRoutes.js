@@ -15,6 +15,7 @@ import {
     getEvaluacionesPorFiltro,
     getInscripcionesCursadasComisionByAlumno,
     getInscriptosPropuestaAñoSede,
+    getInscriptosSedeAnio,
     getListComisionesAnio,
     getListMateriasComision,
     getListadoAlumnosSubcomisiones,
@@ -49,7 +50,7 @@ router.get('/listcomisionesanio/:anio', getListComisionesAnio)//listado comision
 router.get('/comisionesanio/:anio', getComisionesAnio)//cantidad de comisiones por sede
 router.get('/comisionesperlect/:anio', getComisionesSedePL) //cantidad de comisiones por sede periodo
 router.get('/comisionesnumero/:anio/:nmateria',getComisionesAnioMateria)
-router.get('/materiascomision/:anio/:sede',getListMateriasComision)
+router.get('/materiascomision/:anio/:sede',getListMateriasComision) //materias de un año y sede
 
 router.get('/cantiInsccomisiones/:anio', getComisionesCantiInscriptos)
 router.get('/cantiinscriptosComiplan/:anio',getComisionesCantiInscriptosPlan)
@@ -74,6 +75,7 @@ router.get('/propuestaversionact/:propuesta', getPropuestaVersionactual)
 router.get('/inscriptospropuestasede/:anio/:sede/:versionact', getInscriptosPropuestaAñoSede)
 
 router.get('/traerinscriptostotsede/:anio',getActividadCantiInscriptosPorSede)
+router.get('/alumnosinscriptos/:anio',getInscriptosSedeAnio)
 
 router.get('/periodosgenericos', traerPeriodosgenCursadas)
 router.get('/comisionesperiodo/:periodo', traerComisionesporPeriodo)

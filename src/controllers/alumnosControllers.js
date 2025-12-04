@@ -41,10 +41,12 @@ let whereClause = `
 `;
 
 try {
-    let sqlQry=`select distinct left(usuario,3) as claustro,sa.ubicacion,sa.propuesta,sa.legajo,sa.calidad,mpd.nro_documento , apellido, nombres, mpc.email, sa.alumno  from negocio.mdp_personas mp 
+    let sqlQry=`select distinct left(usuario,3) as claustro,sa.ubicacion,sa.propuesta, spv.plan, sa.plan_version,sa.legajo,sa.calidad
+    ,mpd.nro_documento , apellido, nombres, mpc.email, sa.alumno  from negocio.mdp_personas mp 
     inner join negocio.mdp_personas_documentos mpd on mpd.documento = mp.documento_principal 
     inner join negocio.mdp_personas_contactos mpc on mpc.persona = mp.persona
     inner join negocio.sga_alumnos sa on sa.persona= mp.persona
+    inner join negocio.sga_planes_versiones spv on spv.plan_version =sa.plan_version 
     where ${whereClause}
     `
     
@@ -383,7 +385,7 @@ export const getEvolucionCohorte = async (req, res) => {
 
     try {
         for (let i = Number(anioI) + 1; i < Number(anioFC) + 1; i++) {
-            console.log(anioI, sede, carrera, i, tipoI)
+           // console.log(anioI, sede, carrera, i, tipoI)
             let totalI = await TreinscriptosPorAnioCohorte(anioI, sede, carrera, i, tipoI)
             let egresados=await traerEgresadosCohorte(anioI, sede, carrera, i, tipoI)
             //console.log(egresados)
@@ -514,7 +516,7 @@ ORDER BY
     let sqlstr=`SELECT COUNT(*) as nrotroncal FROM negocio.vw_hist_academica  WHERE resultado='A' AND alumno =${alumno}`
     if (anio===3){
       sqlstr += ` AND actividad_codigo in ('02370', '02375')`
-      console.log(sqlstr)
+    //  console.log(sqlstr)
        const resu = await coneccionDB.query(sqlstr)
        if (resu.rows[0].nrotroncal > 1){
         return true
@@ -522,7 +524,7 @@ ORDER BY
   
     }else if(anio===2){
       sqlstr += ` AND actividad_codigo in ('02270', '02275')`
-      console.log(sqlstr)
+    //  console.log(sqlstr)
       const resu = await coneccionDB.query(sqlstr)
       if (resu.rows[0].nrotroncal > 1){
         return true
@@ -676,7 +678,7 @@ ORDER BY
     
         const result = await coneccionDB.query(sql, [fecha, alumno]);
         let materiasAnio = result.rows[0].aprobadas;
-        console.log(materiasAnio)
+       // console.log(materiasAnio)
         let aniocursada = 0;
         if (materiasAnio < 5) aniocursada = 1;
         else if (materiasAnio < 13) aniocursada = 2;
@@ -721,7 +723,7 @@ ORDER BY
         await coneccionDB.query(sqlUpdate, [aniocursada, alumno]);
         */
        /*reinscripcio*/
-        console.log(alumno, reinscripcion)
+       // console.log(alumno, reinscripcion)
          const sqlUpdate = `
           UPDATE fce_per.alumnos_ingresantes
           SET r_2025 = $1
@@ -744,5 +746,76 @@ ORDER BY
 
   /////////
 
+export const getAprobadasPorAlumno = async (req, res) => {
+    
+    // 1. Obtener el ID del alumno desde los parámetros de la URL.
+   
+    const { alumno } = req.params;
 
+    //console.log(alumno)
+    const queryText = `
+        SELECT 
+            vha.elemento,
+            vha.actividad_codigo, 
+            vha.actividad_nombre 
+        FROM negocio.vw_hist_academica vha 
+        WHERE vha.alumno = $1 
+          AND vha.resultado = 'A';
+    `;
+
+    // 3. Definir los valores para los parámetros
+    const values = [alumno];
+
+    // 4. Ejecutar la consulta dentro de un bloque try...catch
+    try {
+        const resufirst = await coneccionDB.query("set search_path=negocio");
+      //  console.log(resufirst)
+        const result = await coneccionDB.query(queryText, values);
+        
+        // 5. Enviar los resultados (result.rows es específico de 'pg')
+        res.status(200).json(result.rows);
+
+    } catch (error) {
+        // 6. Manejar errores
+        console.error('Error al consultar materias aprobadas:', error.stack);
+        res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+};
+  //////////
+
+export const getRegularesPorAlumno = async (req, res) => {
+    
+    // 1. Obtener el ID del alumno desde los parámetros de la URL.
+   
+    const { alumno } = req.params;
+
+    //console.log(alumno)
+    const queryText = `
+        SELECT 
+            vha.elemento,
+            vha.actividad_codigo, 
+            vha.actividad_nombre  
+        FROM negocio.vw_regularidades vha 
+        WHERE vha.alumno = $1 
+          AND vha.resultado = 'A' and estado='A';
+    `;
+
+    // 3. Definir los valores para los parámetros
+    const values = [alumno];
+
+    // 4. Ejecutar la consulta dentro de un bloque try...catch
+    try {
+        const resufirst = await coneccionDB.query("set search_path=negocio");
+      //  console.log(resufirst)
+        const result = await coneccionDB.query(queryText, values);
+        
+        // 5. Enviar los resultados (result.rows es específico de 'pg')
+        res.status(200).json(result.rows);
+
+    } catch (error) {
+        // 6. Manejar errores
+        console.error('Error al consultar materias aprobadas:', error.stack);
+        res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+};
   //////////

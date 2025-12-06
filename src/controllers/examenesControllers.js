@@ -375,6 +375,9 @@ const alumnost =async(anio,sede,propuesta)=>{
 
 //HISTORICOS
 //grabar datos historicos aprobadas por alumno anio
+
+// original comentada
+/*
 const tratarHistoricosaprobadasAlumnosAnio=async(anio,sede,propuesta, tablavalores )=>{
     
   
@@ -403,7 +406,129 @@ const tratarHistoricosaprobadasAlumnosAnio=async(anio,sede,propuesta, tablavalor
     return resu
 
 }
+
+*/
 //
+//funciones auxiliares para historicos aprobadas por alumno anio
+//funcion check si existe el registro
+const checkHistoricoExists = async (anio, sede, propuesta) => {
+    const sqlSelect = `
+        SELECT anio
+        FROM fce_per.dash_aprobadas_anio
+        WHERE anio = $1 AND sede = $2 AND propuesta = $3
+    `;
+    
+    // Usamos un array de parámetros para que la base de datos los maneje de forma segura
+    const params = [anio, sede, propuesta]; 
+    
+    try {
+        // Asumiendo que coneccionDB.query devuelve un objeto con una propiedad 'rows'
+        const resu = await coneccionDB.query(sqlSelect, params);
+        // Si hay filas, el registro existe (devuelve true), de lo contrario, false
+        return resu.rows && resu.rows.length > 0; 
+    } catch (error) {
+        console.error("Error al verificar la existencia del registro:", error);
+        throw error;
+    }
+};
+
+//funcion insert
+const insertHistoricosAprobadasAnio = async (vh) => {
+    const sqlInsert = `
+        INSERT INTO fce_per.dash_aprobadas_anio (
+            anio, sede, propuesta, ap_cero, ap_una, ap_dos, ap_tres,
+            ap_cuatro, ap_cinco, ap_seis, ap_siete, ap_ocho, ap_nueve
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+        )
+    `;
+    
+    // Array de valores para los placeholders ($1, $2, ...)
+    const params = [
+        vh.anio, vh.sede, vh.propuesta, vh.apcero, vh.apuna, vh.apdos,
+        vh.aptres, vh.apcuatro, vh.apcinco, vh.apseis, vh.apsiete, 
+        vh.apocho, vh.apnueve
+    ];
+    
+    //console.log("Realizando INSERT:", vh.anio, vh.sede, vh.propuesta);
+    return coneccionDB.query(sqlInsert, params);
+};
+
+//funcion update 
+const updateHistoricosAprobadasAnio = async (vh) => {
+    const sqlUpdate = `
+        UPDATE fce_per.dash_aprobadas_anio
+        SET
+            ap_cero = $4,
+            ap_una = $5,
+            ap_dos = $6,
+            ap_tres = $7,
+            ap_cuatro = $8,
+            ap_cinco = $9,
+            ap_seis = $10,
+            ap_siete = $11,
+            ap_ocho = $12,
+            ap_nueve = $13
+        WHERE anio = $1 AND sede = $2 AND propuesta = $3
+    `;
+
+    const params = [
+        vh.anio, vh.sede, vh.propuesta, vh.apcero, vh.apuna, vh.apdos,
+        vh.aptres, vh.apcuatro, vh.apcinco, vh.apseis, vh.apsiete, 
+        vh.apocho, vh.apnueve
+    ];
+    
+    //console.log("Realizando UPDATE:", vh.anio, vh.sede, vh.propuesta);
+    return coneccionDB.query(sqlUpdate, params);
+};
+//nueva optimizada
+
+const tratarHistoricosAprobadasAlumnosAnio = async (anio, sede, propuesta, tablavalores) => {
+    // 1. Mapeo de valores (igual que en tu función original, pero más conciso)
+    const data = tablavalores[0];
+    const vh = {
+        anio: anio,
+        sede: sede,
+        propuesta: propuesta,
+        apcero: data.cero,
+        apuna: data.una,
+        apdos: data.dos,
+        aptres: data.tres,
+        apcuatro: data.cuatro,
+        apcinco: data.cinco,
+        apseis: data.seis,
+        apsiete: data.siete,
+        apocho: data.ocho,
+        apnueve: data.nueve,
+    };
+
+    try {
+        // 2. 🚨 Verificar si el registro existe
+        const exists = await checkHistoricoExists(anio, sede, propuesta);
+
+        let resu;
+        if (exists) {
+            // 3. Si existe, realizar UPDATE
+            //console.log(`Registro encontrado para ${anio}-${propuesta}. Se realizará UPDATE.`);
+            resu = await updateHistoricosAprobadasAnio(vh);
+        } else {
+            // 4. Si no existe, realizar INSERT
+            //console.log(`Registro NO encontrado para ${anio}-${propuesta}. Se realizará INSERT.`);
+            resu = await insertHistoricosAprobadasAnio(vh);
+        }
+        if (resu) {
+            return {"message":"OK"};
+
+        }  //return resu;
+
+    } catch (error) {
+        console.error("Error en la función tratarHistoricosAprobadasAlumnosAnio:", error);
+        throw error; // Re-lanzar el error para que el llamador lo maneje
+    }
+};
+
+
 /*
 const tratarQry=(alumnos)=>{
 
@@ -501,7 +626,8 @@ try {
             const tablavalores = tratarQryOptimizado(resu.rows)
             tablavalores[0].cero=alucero
             if (tipoO ==='H'){
-               let resp = tratarHistoricosaprobadasAlumnosAnio(anio,sede,propuesta,tablavalores)
+               let resp = await tratarHistoricosAprobadasAlumnosAnio(anio,sede,propuesta,tablavalores)
+               console.log(resp)
                res.send(resp)
             }else if(tipoO==='Q'){
                 res.send(tablavalores);

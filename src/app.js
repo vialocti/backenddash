@@ -14,6 +14,7 @@ import opeanaiRoutes from './routes/openaiRoutes.js'
 import rendimientoRoutes from './routes/rendimientoRoutes.js'
 import session from 'express-session'
 import utilesRoutes from './routes/utilesRoutes.js'
+import adminRoutes from './routes/adminRoutes.js'
 
 //
 
@@ -46,6 +47,7 @@ app.use('/rendimiento', rendimientoRoutes)
 app.use('/utiles', utilesRoutes)
 app.use('/aluinfo', alumnosInfoRoutes)
 app.use('/datosanalisis', opeanaiRoutes)
-
+app.use('/admin', adminRoutes)
+//
 
 export default app

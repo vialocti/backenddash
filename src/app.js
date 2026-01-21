@@ -15,6 +15,7 @@ import rendimientoRoutes from './routes/rendimientoRoutes.js'
 import session from 'express-session'
 import utilesRoutes from './routes/utilesRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
+import logRoutes from './routes/logRoutes.js'
 
 //
 
@@ -48,6 +49,7 @@ app.use('/utiles', utilesRoutes)
 app.use('/aluinfo', alumnosInfoRoutes)
 app.use('/datosanalisis', opeanaiRoutes)
 app.use('/admin', adminRoutes)
+app.use('/log', logRoutes)
 //
 
 export default app

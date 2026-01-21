@@ -90,12 +90,12 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
     let fecha_i = ''
     let fecha_f = ''
     let aniot = Number(anio) + 1
-    let ubicacion='1'
-    if (sede === '0') { 
-        ubicacion ='1,2,3,4'
-    }else{
-            ubicacion=sede
-        }
+    let ubicacion = '1'
+    if (sede === '0') {
+        ubicacion = '1,2,3,4'
+    } else {
+        ubicacion = sede
+    }
     if (lapso === 'C') {
 
         fecha_i = `${anio}-01-01`
@@ -116,7 +116,7 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
     where sa.ubicacion in (${ubicacion}) and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
     group by sa.propuesta
     `
-   //console.log(sql)
+    //console.log(sql)
 
 
 
@@ -136,23 +136,34 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
 export const getCantidadEgreSedesAnio = async (req, res) => {
 
     const { anio, lapso } = req.params
+    let anioE = anio
+    console.log(anio)
+    if (parseInt(anio) === 0) {
+        anioE = new Date().getFullYear()
+        let fecha = new Date()
+        if (fecha < new Date(`${anioE}-04-01`)) {
+            anioE = anioE - 1
+        }
+    }
+
     let fecha_i = ''
     let fecha_f = ''
-    let aniot = Number(anio) + 1
+    let aniot = Number(anioE) + 1
 
     if (lapso === 'C') {
 
-        fecha_i = `${anio}-01-01`
+        fecha_i = `${anioE}-01-01`
         fecha_f = `${aniot}-01-01`
 
     } else if (lapso === 'L') {
 
-        fecha_i = `${anio}-04-01`
+        fecha_i = `${anioE}-04-01`
         fecha_f = `${aniot}-04-01`
 
     }
 
-
+    console.log(fecha_i)
+    console.log(fecha_f)
 
     let sql = `select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
     count(sa.ubicacion)
@@ -162,6 +173,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
         where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' and certificado  in (3,4,5,6,7,9)
         group by sa.ubicacion
     `
+
 
     try {
         //  let sql = `${sql_1} ${sql_I} ${sql_w} ${sql_g}`
@@ -176,7 +188,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
 
 
 export const getEgresadosPromedios = async (req, res) => {
-   // console.log('aaa')
+    // console.log('aaa')
     const { anio, car, lapso, ficola, ffcola } = req.params
 
     let fecha_i = ''
@@ -195,8 +207,8 @@ export const getEgresadosPromedios = async (req, res) => {
             fecha_i = `${anio}-04-01`
             fecha_f = `${aniot}-04-01`
 
-        } else if(lapso === 'E') {
-             fecha_i = `${anioic}-09-30`
+        } else if (lapso === 'E') {
+            fecha_i = `${anioic}-09-30`
             fecha_f = `${anio}-10-01`
         }
 
@@ -343,25 +355,25 @@ export const cantidadEresadosaniosPropuesta = async (req, res) => {
 
 
 
-export const obtenerCertificadosPorAnio=async (req, res)=> {
-  
+export const obtenerCertificadosPorAnio = async (req, res) => {
+
     const hoy = new Date();
     const anioActual = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
     const dia = String(hoy.getDate()).padStart(2, '0');
     const fechaFinal = `${anioActual}-${mes}-${dia}`;
-  
+
     const resultados = [];
-  
+
     try {
-      
-  
-      for (let i = 0; i < 6; i++) { // 0 = año actual, hasta 5 años atrás
-        const anio = anioActual - i;
-        const fechaInicio = `${anio}-01-01`;
-        const fechaFin = `${anio}-${mes}-${dia}`;
-  
-        const query = `
+
+
+        for (let i = 0; i < 6; i++) { // 0 = año actual, hasta 5 años atrás
+            const anio = anioActual - i;
+            const fechaInicio = `${anio}-01-01`;
+            const fechaFin = `${anio}-${mes}-${dia}`;
+
+            const query = `
           SELECT COUNT(*) AS cantidad
           FROM negocio.sga_certificados_otorg sco
           WHERE certificado IN (3,4,5,6,7,9,16)
@@ -369,22 +381,22 @@ export const obtenerCertificadosPorAnio=async (req, res)=> {
             AND fecha_egreso >= $1
             AND fecha_egreso <= $2
         `;
-  
-        const res = await coneccionDB.query(query, [fechaInicio, fechaFin]);
-        resultados.push({
-          anio,
-          cantidad: parseInt(res.rows[0].cantidad, 10)
-        });
-      }
-  
-     // console.log(resultados);
-     
-      res.send(resultados);
-  
+
+            const res = await coneccionDB.query(query, [fechaInicio, fechaFin]);
+            resultados.push({
+                anio,
+                cantidad: parseInt(res.rows[0].cantidad, 10)
+            });
+        }
+
+        // console.log(resultados);
+
+        res.send(resultados);
+
     } catch (err) {
-      console.error('Error al consultar:', err);
+        console.error('Error al consultar:', err);
         res.status(500).send('Error al consultar la base de datos');
     }
-  }
+}
 
 

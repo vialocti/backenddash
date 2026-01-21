@@ -137,101 +137,139 @@ export const traerDatosAlumnosInfo = async (req, res) => {
 /**
  * Endpoint que obtiene los reinscriptos para un año dado y los inserta en la tabla destino.
  */
+
 export const processReinscriptos = async (req, res) => {
   const { anio } = req.params;
 
-  // 1. Consulta de origen (Guarani)
+  // Consulta para obtener los reinscriptos
   const selectQuery = `
     SELECT DISTINCT
-      alu.persona, alu.alumno, alu.legajo,
-      dper.tipo_documento, dper.nro_documento,
-      mp.apellido, mp.nombres, mp.fecha_nacimiento,
-      mp.sexo as genero, alu.ubicacion, alu.propuesta,
-      alu.plan_version, spv.plan, alu.calidad
+      alu.persona,
+      alu.alumno,
+      alu.legajo,
+      dper.tipo_documento,
+      dper.nro_documento,
+      mp.apellido,
+      mp.nombres,
+      mp.fecha_nacimiento,
+      mp.sexo,
+      alu.ubicacion,
+      alu.propuesta,
+      alu.plan_version,
+      spv.plan,
+      alu.calidad
     FROM negocio.sga_reinscripciones AS rei
     INNER JOIN negocio.sga_alumnos AS alu ON alu.alumno = rei.alumno
     INNER JOIN negocio.sga_planes_versiones AS spv ON spv.plan_version = alu.plan_version
     INNER JOIN negocio.mdp_personas AS mp ON mp.persona = alu.persona
     INNER JOIN negocio.mdp_personas_documentos AS dper ON dper.documento = mp.documento_principal
     WHERE propuesta IN (1,2,3,6,7,8)
+      
       AND calidad IN ('A','P')
       AND anio_academico = $1
   `;
 
-  // 2. Query con ON CONFLICT (Upsert)
-  // Esto evita hacer un SELECT por cada registro, mejorando el rendimiento x10
-  const upsertQuery = `
+  // Query parametrizado para insertar un registro en fce_per.alumnos_info
+  const insertQuery = `
     INSERT INTO fce_per.alumnos_info (
-      persona, alumno, legajo, tipo_documento, nro_documento,
-      apellido, nombres, fecha_nacimiento, genero,
-      ubicacion, propuesta, plan_version, plan, calidad
+      persona,
+      alumno,
+      legajo,
+      tipo_documento,
+      nro_documento,
+      apellido,
+      nombres,
+      fecha_nacimiento,
+      genero,
+      ubicacion,
+      propuesta,
+      plan_version,
+      plan,
+      calidad
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
     )
-    ON CONFLICT (alumno, ubicacion, propuesta) 
-    DO UPDATE SET 
-      plan_version = EXCLUDED.plan_version,
-      calidad = EXCLUDED.calidad,
-      legajo = EXCLUDED.legajo
-    RETURNING (xmax = 0) AS inserted;
+  `;
+
+  // Query para verificar si ya existe un registro con la combinación alumno, ubicacion y propuesta
+  const selectExistsQuery = `
+    SELECT 1
+    FROM fce_per.alumnos_info
+    WHERE alumno = $1
+      AND ubicacion = $2
+      AND propuesta = $3
+    LIMIT 1;
   `;
 
   try {
+    // Inicia una transacción
     await coneccionDB.query('BEGIN');
 
-    const { rows: alumnosGuarani } = await coneccionDB.query(selectQuery, [anio]);
+    // Ejecuta la consulta para obtener los reinscriptos
+    const { rows } = await coneccionDB.query(selectQuery, [anio]);
+    console.log(`Se obtuvieron ${rows.length} registros para el año ${anio}`);
 
+    // Inicialización de contadores
+    const procesados = rows.length;
     let insertados = 0;
-    let actualizados = 0;
+    let rechazados = 0;
 
-    for (const row of alumnosGuarani) {
-      // Normalización de legajo
+    // Recorre cada registro y realiza la inserción si no existe ya uno igual
+    for (const row of rows) {
+      // Si legajo es null o cadena vacía, lo reemplazamos por 0
       const legajo = row.legajo && row.legajo !== '' ? row.legajo : 0;
 
-      const values = [
-        row.persona, row.alumno, legajo, row.tipo_documento, row.nro_documento,
-        row.apellido, row.nombres, row.fecha_nacimiento, row.genero,
-        row.ubicacion, row.propuesta, row.plan_version, row.plan, row.calidad
-      ];
+      // Limpia el apellido si es necesario (evita problemas con comillas simples)
+      let apellido = row.apellido;
+      if (apellido && apellido.includes("'")) {
+        apellido = apellido.replace(/'/g, "''");
+      }
 
-      const resUpsert = await coneccionDB.query(upsertQuery, values);
-
-      // xmax = 0 indica que fue un INSERT, de lo contrario fue un UPDATE
-      if (resUpsert.rows[0].inserted) {
+      // Verifica si ya existe un registro con alumno, ubicacion y propuesta
+      const { rows: existsRows } = await coneccionDB.query(selectExistsQuery, [row.alumno, row.ubicacion, row.propuesta]);
+      if (existsRows.length === 0) {
+        const values = [
+          row.persona,
+          row.alumno,
+          legajo,
+          row.tipo_documento,
+          row.nro_documento,
+          apellido,
+          row.nombres,
+          row.fecha_nacimiento,
+          row.sexo,
+          row.ubicacion,
+          row.propuesta,
+          row.plan_version,
+          row.plan,
+          row.calidad,
+        ];
+        await coneccionDB.query(insertQuery, values);
         insertados++;
       } else {
-        actualizados++;
+        rechazados++;
       }
     }
 
+    // Confirma la transacción si todo sale bien
     await coneccionDB.query('COMMIT');
-
-    // Respuesta estructurada para n8n
     res.status(200).json({
-      status: "success",
-      step: "PASO_1_REINSCRIPTOS",
-      anio: anio,
-      stats: {
-        total_origen: alumnosGuarani.length,
-        nuevos_insertados: insertados,
-        actualizados: actualizados
-      }
+      message: 'Proceso completado.',
+      procesados,
+      insertados,
+      rechazados,
     });
-
   } catch (error) {
+    // Si ocurre un error, se revierte la transacción
     await coneccionDB.query('ROLLBACK');
-    console.error('Error en Paso 1:', error);
-    res.status(500).json({
-      status: "error",
-      message: 'Error al procesar reinscriptos.',
-      detail: error.message
-    });
+    console.error('Error al procesar reinscriptos:', error);
+    res.status(500).json({ message: 'Error al procesar reinscriptos.', error });
+  } finally {
+    console.log('OK');
   }
 };
 
 
-
-//********
 ///proceso de llenado de datos
 //obtener datos de alumnos y actualiza la tabla fce_per.alumnos_info
 
@@ -290,9 +328,8 @@ async function infoOne(tp) {
 
     const result = await coneccionDB.query(sqlSelect);
 
-    //console.log("Cantidad de registros:", result.rowCount);
+    console.log("Cantidad de registros:", result.rowCount);
     //console.log(result)
-    let actualizados = result.rowCount;
     if (result.rowCount > 0) {
 
 
@@ -331,14 +368,7 @@ async function infoOne(tp) {
         await coneccionDB.query(sqlUpdate, values);
       }
     }
-    return {
-      status: "success",
-      step: "PASO_2",
-      stats: {
-        tiempo: "I",
-        actualizados: actualizados
-      }
-    };
+    return { message: 'Actualización completada' };
   } catch (error) {
     console.log(error)
   }
@@ -360,9 +390,8 @@ async function infoOneAct() {
     `;
     const result = await coneccionDB.query(sqlSelect);
 
-    //console.log("El número de registros es:", result.rowCount);
-    let actualizados = 0;
-    actualizados = result.rowCount;
+    console.log("El número de registros es:", result.rowCount);
+
     // Establecer search_path una sola vez
     await coneccionDB.query('SET search_path = negocio');
 
@@ -370,7 +399,7 @@ async function infoOneAct() {
     let count = 0;
     for (const row of result.rows) {
       count++;
-      //console.log(`Procesando registro ${count} de ${result.rowCount} - Alumno: ${row.alumno}`);
+      console.log(`Procesando registro ${count} de ${result.rowCount} - Alumno: ${row.alumno}`);
       // Obtener solo los datos académicos (modo 'A')
       const datos = await obtenerDatosAlumno(row, 'A');
       console.log(`Datos obtenidos para alumno ${row.alumno}:`, datos);
@@ -398,14 +427,7 @@ async function infoOneAct() {
       await coneccionDB.query(sqlUpdate, values);
     }
 
-    return {
-      status: "success",
-      step: "PASO_2",
-      stats: {
-        tiempo: "A",
-        actualizados: actualizados
-      }
-    };
+    return { message: 'Actualización completada' };
   } catch (error) {
     console.error("Error en infoOneAct:", error);
     throw error;
@@ -656,16 +678,15 @@ async function traerRegulares(alumno, plan, anio) {
  * Controlador para exponer el endpoint que ejecuta la función infoOne.
  */
 export const processInfo_One = async (req, res) => {
-  const { tp, modo } = req.params
+  const { tp, etapa } = req.params
   //console.log(`Procesando infoOne con tipo: ${tp} y etapa: ${etapa}`);
-  let result;
   try {
-    if (modo === 'A') {
-      result = await infoOneAct();
+    if (etapa === 'A') {
+      const result = await infoOneAct();
     } else {
-      result = await infoOne(tp);
+
+      const result = await infoOne(tp);
     }
-    console.log(result);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.toString() });

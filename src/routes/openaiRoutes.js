@@ -12,7 +12,7 @@ router.post('/cosusql', consultasOpenaiNew);
 module.exports = router;
 */
 
-import { analyzeEquivalencies, askAssistant_R, consultasOpenaiNew, getAnalizador_datos, getAnalizador_datos_R} from "../controllers/openAIControllers.js";
+import { analyzeEquivalencies, askAssistant_R, consultasOpenaiNew, generateInformeIA_actividades_historicas, getAnalizador_datos } from "../controllers/openAIControllers.js";
 
 import { Router } from "express";
 
@@ -23,7 +23,8 @@ router.post('/analizardatos', getAnalizador_datos)
 //router.post('/consuopenai',consultasOpenai)
 router.post('/cosusql', consultasOpenaiNew)
 router.post('/helpme', askAssistant_R)
-router.post('/equivalplan', getAnalizador_datos_R)
-router.post('/consuagente', analyzeEquivalencies)
+//router.post('/preguntasfrecuentes', getAnalizador_datos_R)
+//router.post('/consuagente', analyzeEquivalencies)
+router.post('/generarInformeIA_actividades', generateInformeIA_actividades_historicas)
 
 export default router;

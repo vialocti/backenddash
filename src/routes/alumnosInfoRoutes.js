@@ -4,15 +4,15 @@ import { Router } from "express";
 
 const router = Router();
 
-router.get('/traerReinscriptos/:anio', getReinscriptos )
+router.get('/traerReinscriptos/:anio', getReinscriptos)
 router.post('/grabarReinscripto', insertAlumnoInfo)
 router.get('/procReinscriptos/:anio', processReinscriptos)//reinscriptos año para alumnosinfo
-router.get('/procinfoOne/:tp/:etapa', processInfo_One)//proceso de carga y actualizacion informacion alumnosInfo
-router.get('/aprobadasanio/:tipoO',calcularAproAnio)
-router.get('/calculoanioplan19/:tipo/:tipoO', aniocursada19)
-router.get('/calculoanioplan98/:tipo/:tipoO',aniocursada98)
-router.get('/calcularCoeft/:anio/:epoca/:tipoO',calculoVelocidad)
-router.get('/traerdatosalu',traerDatosAlumnosInfo)
+router.get('/procinfoOne/:tp/:modo', processInfo_One)//proceso de carga y actualizacion informacion alumnosInfo
+router.get('/aprobadasanio/:tipoO', calcularAproAnio) //calcular aprobadas anio
+router.get('/calculoanioplan19/:tipo/:tipoO', aniocursada19) //calculo anio plan 19
+router.get('/calculoanioplan98/:tipo/:tipoO', aniocursada98) //calculo anio plan 98
+router.get('/calcularCoeft/:anio/:epoca/:tipoO', calculoVelocidad) //calcular coeficiente
+router.get('/traerdatosalu', traerDatosAlumnosInfo)
 
 //controles adicionales
 router.get('/controlCalidad', controlCalidadAluinfo)

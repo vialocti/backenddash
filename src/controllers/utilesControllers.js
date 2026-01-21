@@ -16,31 +16,31 @@ import { convertirDatosNew } from './cursadasControllers.js'
 
 
 
-const grabarRegistro= async(registro, actividad,codsede,recursado,anio)=>{
- // console.log(registro)
-  const {propuesta,comision,nombre, total,regular,reprobado,ausente,promocionado,porccentajeR, porccentajeP,periodo,codmat} = registro
+const grabarRegistro = async (registro, actividad, codsede, recursado, anio) => {
+  // console.log(registro)
+  const { propuesta, comision, nombre, total, regular, reprobado, ausente, promocionado, porccentajeR, porccentajeP, periodo, codmat } = registro
 
 
-  let sede=0
-  if(codsede==='M0'){
-    sede=1
-  }else if(codsede==='S0'){
-    sede=2
-  }else if(codsede==='GA'){
-    sede=3
-  }else if(codsede==='SM'){
-    sede=4
+  let sede = 0
+  if (codsede === 'M0') {
+    sede = 1
+  } else if (codsede === 'S0') {
+    sede = 2
+  } else if (codsede === 'GA') {
+    sede = 3
+  } else if (codsede === 'SM') {
+    sede = 4
   }
-  try{
-    const indiceAct=porccentajeR * 0.7 + porccentajeP * 0.3
-  let sqlI = "INSERT INTO fce_per.dash_actividad_resultados ( propuesta,comision, nombre,anio_academico,sede,actividad_nombre,total_inscriptos,regulares,reprobados,ausentes,promocionados,relacion_regular,relacion_promocion,indice_cursada,recursado,periodo,codmat) values("
-  sqlI=sqlI + propuesta +", " + comision + ",'" + nombre + "',"+ anio + "," + sede +",'" + actividad + "'," + total + "," + regular + "," + reprobado + "," + ausente + "," + promocionado + "," +  porccentajeR + ", " + porccentajeP + "," + indiceAct.toFixed(2) + ",'" + recursado + "', '" + periodo + "','" + codmat + "')"
-  //console.log(sqlI)
-  const result = await coneccionDB.query(sqlI)
-   
-  //console.log(result.rowCount)
-  }catch(error){
-    
+  try {
+    const indiceAct = porccentajeR * 0.7 + porccentajeP * 0.3
+    let sqlI = "INSERT INTO fce_per.dash_actividad_resultados ( propuesta,comision, nombre,anio_academico,sede,actividad_nombre,total_inscriptos,regulares,reprobados,ausentes,promocionados,relacion_regular,relacion_promocion,indice_cursada,recursado,periodo,codmat) values("
+    sqlI = sqlI + propuesta + ", " + comision + ",'" + nombre + "'," + anio + "," + sede + ",'" + actividad + "'," + total + "," + regular + "," + reprobado + "," + ausente + "," + promocionado + "," + porccentajeR + ", " + porccentajeP + "," + indiceAct.toFixed(2) + ",'" + recursado + "', '" + periodo + "','" + codmat + "')"
+    //console.log(sqlI)
+    const result = await coneccionDB.query(sqlI)
+
+    //console.log(result.rowCount)
+  } catch (error) {
+
     console.log(error)
   }
 
@@ -48,54 +48,54 @@ const grabarRegistro= async(registro, actividad,codsede,recursado,anio)=>{
 }
 
 
-const tratarDatos=(detalleComisiones,anio,actividad,codsede,recursado)=>{
+const tratarDatos = (detalleComisiones, anio, actividad, codsede, recursado) => {
   //console.log(anio,actividad)
   //console.log(detalleComisiones)
-  
-  
-  let cantiRegular = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.regular)}, 0)
-  let cantiReprobado = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.reprobado)}, 0)
-  let cantiAusente = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.ausente)}, 0)
-  let cantiPromo = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.promocionado)}, 0)
-  let cantiTotal = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.total)}, 0)
-  let indicereg= cantiRegular/cantiTotal 
-  let indicepro=cantiPromo/cantiTotal
-  let indiceT=indicereg * 0.7 + indicepro * 0.3
 
-  let cantiA1 = detalleComisiones.reduce((total,valorActual)=>{return total + parseInt(valorActual.examenuno)}, 0)
+
+  let cantiRegular = detalleComisiones.reduce((total, valorActual) => { return total + parseInt(valorActual.regular) }, 0)
+  let cantiReprobado = detalleComisiones.reduce((total, valorActual) => { return total + parseInt(valorActual.reprobado) }, 0)
+  let cantiAusente = detalleComisiones.reduce((total, valorActual) => { return total + parseInt(valorActual.ausente) }, 0)
+  let cantiPromo = detalleComisiones.reduce((total, valorActual) => { return total + parseInt(valorActual.promocionado) }, 0)
+  let cantiTotal = detalleComisiones.reduce((total, valorActual) => { return total + parseInt(valorActual.total) }, 0)
+  let indicereg = cantiRegular / cantiTotal
+  let indicepro = cantiPromo / cantiTotal
+  let indiceT = indicereg * 0.7 + indicepro * 0.3
+
+  let cantiA1 = detalleComisiones.reduce((total, valorActual) => { return total + parseInt(valorActual.examenuno) }, 0)
   let registro = {
-  nombre:detalleComisiones[0].nombre,
-  propuesta:detalleComisiones[0].propuesta,
-  actividad:actividad,
-  anio:anio,
-  codsede:codsede,
-  total:cantiTotal,
-  regulares:cantiRegular-cantiPromo, //resto promocionados a regulareas
-  reprobados:cantiReprobado,
-  ausentes:cantiAusente,
-  promocionados:cantiPromo,
-  indiceReg:indicereg.toFixed(2),
-  indiceProm:indicepro.toFixed(2),
-  indiceAct:indiceT.toFixed(2),
-  aprobadose1:cantiA1,
-  recursado:recursado
-}
-if(cantiTotal>0){
-const result= grabarRegistro(registro)
-}
-return 
+    nombre: detalleComisiones[0].nombre,
+    propuesta: detalleComisiones[0].propuesta,
+    actividad: actividad,
+    anio: anio,
+    codsede: codsede,
+    total: cantiTotal,
+    regulares: cantiRegular - cantiPromo, //resto promocionados a regulareas
+    reprobados: cantiReprobado,
+    ausentes: cantiAusente,
+    promocionados: cantiPromo,
+    indiceReg: indicereg.toFixed(2),
+    indiceProm: indicepro.toFixed(2),
+    indiceAct: indiceT.toFixed(2),
+    aprobadose1: cantiA1,
+    recursado: recursado
+  }
+  if (cantiTotal > 0) {
+    const result = grabarRegistro(registro)
+  }
+  return
 }
 
 
 export const resultadoDetallesporComisionesH = async (anio, ncomisiones, codsede, actividad, recursado) => {
   try {
-  //  console.log(`Procesando: año=${anio}, comisiones=${ncomisiones}, sede=${codsede}, actividad=${actividad}, recursado=${recursado}`);
+    //  console.log(`Procesando: año=${anio}, comisiones=${ncomisiones}, sede=${codsede}, actividad=${actividad}, recursado=${recursado}`);
 
     const conrecu = recursado === 'N'
       ? `AND NOT UPPER(sc.nombre) LIKE('%RECUR%')`
       : recursado === 'R'
-      ? `AND UPPER(sc.nombre) LIKE('%RECUR%')`
-      : '';
+        ? `AND UPPER(sc.nombre) LIKE('%RECUR%')`
+        : '';
 
     // Convertimos la lista de comisiones en un array seguro
     const comisionesList = ncomisiones.split(',').map((c) => parseInt(c)).filter(Number.isInteger);
@@ -125,8 +125,8 @@ export const resultadoDetallesporComisionesH = async (anio, ncomisiones, codsede
     const arrayDatos = await convertirDatosNew(comisionesList, resu.rows, anio);
     for (const registro of arrayDatos) {
       try {
-        await grabarRegistro(registro, actividad,codsede,recursado,anio); // <-- tu función para grabar
-       // console.log(`Grabado comision ${registro.comision}`);
+        await grabarRegistro(registro, actividad, codsede, recursado, anio); // <-- tu función para grabar
+        // console.log(`Grabado comision ${registro.comision}`);
       } catch (error) {
         console.error(`Error al grabar comisión ${dato.comision}:`, error.message);
       }
@@ -144,20 +144,20 @@ export const resultadoDetallesporComisionesH = async (anio, ncomisiones, codsede
 const getNrocomisionesMateria = async (anio, nmateria) => {
 
 
-   
-      let sqlstr = `select sc.comision  from negocio.sga_comisiones sc 
+
+  let sqlstr = `select sc.comision  from negocio.sga_comisiones sc 
       inner join negocio.sga_elementos se on se.elemento = sc.elemento 
       inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
       inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
       inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
       where sp.anio_academico =${anio} and se.nombre = '${nmateria}' and not sc.nombre like'V%' order by comision `
-     // console.log(sqlstr)
+  // console.log(sqlstr)
   try {
-      const resu = await coneccionDB.query(sqlstr)
-      return resu.rows
-      
+    const resu = await coneccionDB.query(sqlstr)
+    return resu.rows
+
   } catch (error) {
-      console.log(error)
+    console.log(error)
   }
 
 }
@@ -166,7 +166,7 @@ const getNrocomisionesMateria = async (anio, nmateria) => {
 
 const getListMateriasComision = async (anio) => {
 
-      let sqlstr = `select distinct se.nombre  from negocio.sga_comisiones sc 
+  let sqlstr = `select distinct se.nombre  from negocio.sga_comisiones sc 
       inner join negocio.sga_elementos se on se.elemento = sc.elemento 
       inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
       inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
@@ -174,24 +174,24 @@ const getListMateriasComision = async (anio) => {
       where sp.anio_academico =${anio} and not sc.nombre like'V%' order by se.nombre `
 
   try {
-      const resu = await coneccionDB.query(sqlstr)
-      return resu.rows
+    const resu = await coneccionDB.query(sqlstr)
+    return resu.rows
   } catch (error) {
-      console.log(error)
+    console.log(error)
   }
 
 }
 
-const getListadomateriasComisionRec=async (anio,sede)=>{
-    
-  let sqlstr=`select actividad_nombre as nombre from fce_per.dash_actividad_resultados where anio_academico=${anio} and cast(sede as integer)=${sede} and recursado='R'`
-    try {
-      const resu = await coneccionDB.query(sqlstr)
-    
-      //console.log(resu.rows)
-      return resu.rows
+const getListadomateriasComisionRec = async (anio, sede) => {
+
+  let sqlstr = `select actividad_nombre as nombre from fce_per.dash_actividad_resultados where anio_academico=${anio} and cast(sede as integer)=${sede} and recursado='R'`
+  try {
+    const resu = await coneccionDB.query(sqlstr)
+
+    //console.log(resu.rows)
+    return resu.rows
   } catch (error) {
-      console.log(error)
+    console.log(error)
   }
 }
 
@@ -254,52 +254,52 @@ export const grabardatosCursadas = async (req, res) => {
 };
 
 
-export const traerFechaInicioIndices =async (comision)=>{
-    
-    
+export const traerFechaInicioIndices = async (comision) => {
 
-    try{
+
+
+  try {
     let strQry = `select  spl.fecha_fin_dictado from negocio.sga_comisiones sc 
     inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo = sc.periodo_lectivo 
     where sc.comision = ${comision}`
 
     const resu = await coneccionDB.query(strQry)
-    const  fecha = resu.rows[0]
+    const fecha = resu.rows[0]
     //console.log('dato:', comision)
-    
+
     let anioI = fecha.fecha_fin_dictado.getFullYear()
     let mes = fecha.fecha_fin_dictado.getMonth() + 1
     let dia = fecha.fecha_fin_dictado.getDate()
-    let anioF= anioI + 1
+    let anioF = anioI + 1
 
-    if(dia<10){
-      dia='0' + dia
+    if (dia < 10) {
+      dia = '0' + dia
     }
-    if(mes<10){
-      mes='0' + mes
+    if (mes < 10) {
+      mes = '0' + mes
     }
     let fechaI = anioI + "-" + mes + "-" + dia
     let fechaF = anioF + "-" + mes + "-" + dia
 
-    return {'fechaI':fechaI, 'fechaF':fechaF}
-    }
-    catch(error){
-      console.log(error)
-    }
+    return { 'fechaI': fechaI, 'fechaF': fechaF }
+  }
+  catch (error) {
+    console.log(error)
+  }
 }
 
 
 
 
 
-const traerExamenAprobadosComision=async (anio, comision,propuesta,codmat, ciclo)=>{
+const traerExamenAprobadosComision = async (anio, comision, propuesta, codmat, ciclo) => {
 
   const fechas = await traerFechaInicioIndices(comision)
- //console.log(anio,comision,propuesta,codmat,ciclo)
+  //console.log(anio,comision,propuesta,codmat,ciclo)
   try {
-      let sqlstr=''
-      if (ciclo=== 2){
-      sqlstr=`select count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
+    let sqlstr = ''
+    if (ciclo === 2) {
+      sqlstr = `select count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
           select distinct sic.alumno from negocio.sga_insc_cursada sic 
           inner join negocio.sga_alumnos sa ON sa.alumno = sic.alumno
           inner join negocio.sga_comisiones sc on sc.comision=sic.comision
@@ -309,9 +309,9 @@ const traerExamenAprobadosComision=async (anio, comision,propuesta,codmat, ciclo
           ) and fecha > '${fechas.fechaI}' and fecha<='${fechas.fechaF}' and actividad_codigo ='${codmat}' and origen='E' and resultado ='A'
           
       `
-      }else{
+    } else {
 
-      sqlstr=`select fecha,turno_examen_nombre, count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
+      sqlstr = `select fecha,turno_examen_nombre, count(turno_examen_nombre)  from negocio.vw_hist_academica  vwh where vwh.alumno in (
           select distinct sic.alumno from negocio.sga_insc_cursada sic 
           inner join negocio.sga_alumnos sa ON sa.alumno = sic.alumno
           inner join negocio.sga_comisiones sc on sc.comision=sic.comision
@@ -322,21 +322,21 @@ const traerExamenAprobadosComision=async (anio, comision,propuesta,codmat, ciclo
           group by fecha,turno_examen_nombre
           order by fecha`
 
-      }
-      //console.log(sqlstr)
-          const resu = await coneccionDB.query(sqlstr)
-        
-          if (resu.rowCount>0){
-          
-              //console.log(ciclo,resu.rows[0].count)    
-              return parseInt(resu.rows[0].count)
-         
-              
-        }else{return 0}
+    }
+    //console.log(sqlstr)
+    const resu = await coneccionDB.query(sqlstr)
 
-        
+    if (resu.rowCount > 0) {
+
+      //console.log(ciclo,resu.rows[0].count)    
+      return parseInt(resu.rows[0].count)
+
+
+    } else { return 0 }
+
+
   } catch (error) {
-      console.log(error, sqlstr)
+    console.log(error, sqlstr)
   }
 
 }
@@ -345,115 +345,115 @@ const traerExamenAprobadosComision=async (anio, comision,propuesta,codmat, ciclo
 
 /////
 
-const getListMateriasComisionDH = async (anio,sede) => {
+const getListMateriasComisionDH = async (anio, sede) => {
 
-  let sqlstr = `select actividad_nombre, id, recursado  from fce_per.dash_actividad_resultados where anio_academico=${anio} and sede='${sede}'` 
- 
+  let sqlstr = `select actividad_nombre, id, recursado  from fce_per.dash_actividad_resultados where anio_academico=${anio} and sede='${sede}'`
 
-try {
-  const resu = await coneccionDB.query(sqlstr)
-  return resu.rows
-} catch (error) {
-  console.log(error)
-}
+
+  try {
+    const resu = await coneccionDB.query(sqlstr)
+    return resu.rows
+  } catch (error) {
+    console.log(error)
+  }
 
 }
 
 
 /////
 ////
-const actualizar_datos=async (id, aprobadase1,aprobadase2)=>{
- if (!aprobadase1){aprobadase1=0}
- if (!aprobadase2){aprobadase2=0}
+const actualizar_datos = async (id, aprobadase1, aprobadase2) => {
+  if (!aprobadase1) { aprobadase1 = 0 }
+  if (!aprobadase2) { aprobadase2 = 0 }
   //console.log(aprobadase1,aprobadase1)
-  let sqlu=`UPDATE fce_per.dash_actividad_resultados SET aprobadase1=${aprobadase1}, aprobadase2=${aprobadase2} WHERE id=${id}`
-  
+  let sqlu = `UPDATE fce_per.dash_actividad_resultados SET aprobadase1=${aprobadase1}, aprobadase2=${aprobadase2} WHERE id=${id}`
+
   try {
-    const resu= await coneccionDB.query(sqlu)
+    const resu = await coneccionDB.query(sqlu)
     return 'ok'
   } catch (error) {
-   
+
     console.log(error)
   }
 
 }
 
 ///traer promocionados AGREGADO NOW
-const traerPromocionados=async (id)=>{
-  
-  
+const traerPromocionados = async (id) => {
+
+
   try {
     const result = await coneccionDB.query(`SELECT promocionados FROM  fce_per.dash_actividad_resultados WHERE id=${id}`)
     return result.rows[0].promocionados
     return 0
   } catch (error) {
     console.log(error)
-    return 0  
+    return 0
   }
 }
 
 //tratamiento examenes
 
-const tratamiento_examenes=async (id, comisiones, codigosmat, anio)=>{
+const tratamiento_examenes = async (id, comisiones, codigosmat, anio) => {
 
-    let aprobadase1=0
-    let aprobadase2=0
-     // console.log(comisiones, codigosmat)
-    
-      let comi = comisiones.split(",")
-      let codi = codigosmat.split(",")
-      //console.log(id)
-     
-      //if(id==='3'){
-      for(let i=0; i<comi.length;i++){
-        
-        aprobadase1 += parseInt(await traerExamenAprobadosComision(anio,comi[i], codi[i],1))
-        
-      }
+  let aprobadase1 = 0
+  let aprobadase2 = 0
+  // console.log(comisiones, codigosmat)
 
-      for(let i=0; i<comi.length;i++){
+  let comi = comisiones.split(",")
+  let codi = codigosmat.split(",")
+  //console.log(id)
 
-        aprobadase2 += parseInt(await traerExamenAprobadosComision(anio,comi[i], codi[i],2))
-        
-      }
-      const promocionados=await traerPromocionados(id)
-        aprobadase1+=parseInt(promocionados)
-        aprobadase2+=parseInt(promocionados)
+  //if(id==='3'){
+  for (let i = 0; i < comi.length; i++) {
 
-      const result = await actualizar_datos(id, aprobadase1, aprobadase2)
-      //console.log(result)
-    //}
-      //
+    aprobadase1 += parseInt(await traerExamenAprobadosComision(anio, comi[i], codi[i], 1))
+
+  }
+
+  for (let i = 0; i < comi.length; i++) {
+
+    aprobadase2 += parseInt(await traerExamenAprobadosComision(anio, comi[i], codi[i], 2))
+
+  }
+  const promocionados = await traerPromocionados(id)
+  aprobadase1 += parseInt(promocionados)
+  aprobadase2 += parseInt(promocionados)
+
+  const result = await actualizar_datos(id, aprobadase1, aprobadase2)
+  //console.log(result)
+  //}
+  //
 
 }
 
 //
-const getNrocomisionesMateriaEx = async (anio, nmateria,codsede,recursado) => {
+const getNrocomisionesMateriaEx = async (anio, nmateria, codsede, recursado) => {
 
- //console.log(anio,nmateria,codsede)
- let conrecu= ''
- if (recursado==='N'){
-     conrecu=`and not upper(sc.nombre) like('%RECUR%')`
- }else if (recursado==='R'){
-     conrecu=`and upper(sc.nombre) like('%RECUR%')`
- }
-   
+  //console.log(anio,nmateria,codsede)
+  let conrecu = ''
+  if (recursado === 'N') {
+    conrecu = `and not upper(sc.nombre) like('%RECUR%')`
+  } else if (recursado === 'R') {
+    conrecu = `and upper(sc.nombre) like('%RECUR%')`
+  }
+
   let sqlstr = `select sc.comision, se.codigo as codmat  from negocio.sga_comisiones sc 
   inner join negocio.sga_elementos se on se.elemento = sc.elemento 
   inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
   inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
   inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
   where sp.anio_academico =${anio} and se.nombre = '${nmateria}'  and left(sc.nombre,2)='${codsede}'  ${conrecu}  order by comision `
-  if(recursado==='R'){
-  //console.log(sqlstr)
+  if (recursado === 'R') {
+    //console.log(sqlstr)
   }
-try {
-  const resu = await coneccionDB.query(sqlstr)
-  return resu.rows
-  
-} catch (error) {
-  console.log(error)
-}
+  try {
+    const resu = await coneccionDB.query(sqlstr)
+    return resu.rows
+
+  } catch (error) {
+    console.log(error)
+  }
 
 }
 
@@ -528,110 +528,110 @@ export const grabarMateriasAprobadasCiclo = async (req, res) => {
 
 
 ///buscar comisiones en archivo
-export const grabardatosCursadasExamenes =async (req,res)=>{
+export const grabardatosCursadasExamenes = async (req, res) => {
 
-  const {anio,sede}=req.params
+  const { anio, sede } = req.params
   const arrayCapo = []
-  let comisionesN=''
-  let codigosmatN=''
-  let dato=null
+  let comisionesN = ''
+  let codigosmatN = ''
+  let dato = null
   const result = await getListMateriasComisionDH(anio, sede)
   const materias = result
- 
-  let codsede=sede==='1'?'M0':sede==='2'?'S0':sede==='3'?'GA':'SM'
- 
-  if(materias){
-     // console.log(materias)
-      materias.forEach(async element => {
+
+  let codsede = sede === '1' ? 'M0' : sede === '2' ? 'S0' : sede === '3' ? 'GA' : 'SM'
+
+  if (materias) {
+    // console.log(materias)
+    materias.forEach(async element => {
       //console.log(element.actividad_nombre)
-        
-          const comisiones = await getNrocomisionesMateriaEx(anio,element.actividad_nombre,codsede,element.recursado)
-      
-      
-          for (const elemento of comisiones) {
-            
-              comisionesN += elemento.comision + ",";
-              codigosmatN += elemento.codmat + ",";
-          
-              }
-          
-              comisionesN = comisionesN.substring(0, comisionesN.length - 1);
-              codigosmatN = codigosmatN.substring(0, codigosmatN.length - 1);
-              //console.log(comisionesN)
-          
-          
-        
-            //const datos = await resultadoDetallesporComisiones(anio,comisionesN,'S0')
-            //console.log(datos)
-              dato={
-                id:element.id,
-                actividad:element.actividad_nombre,
-                anio,
-                sede:sede==='1'?'M0':sede==='2'?'S0':sede==='3'?'GA':'SM',
-                comisiones: comisionesN,
-                codigosmat: codigosmatN
-              }
-              //console.log(arrayCapo)
-            
-              comisionesN=''
-              codigosmatN=''
-          //console.log('P')
-       
-             arrayCapo.push(dato)
-            
-          
-          
-        
+
+      const comisiones = await getNrocomisionesMateriaEx(anio, element.actividad_nombre, codsede, element.recursado)
+
+
+      for (const elemento of comisiones) {
+
+        comisionesN += elemento.comision + ",";
+        codigosmatN += elemento.codmat + ",";
+
+      }
+
+      comisionesN = comisionesN.substring(0, comisionesN.length - 1);
+      codigosmatN = codigosmatN.substring(0, codigosmatN.length - 1);
+      //console.log(comisionesN)
+
+
+
+      //const datos = await resultadoDetallesporComisiones(anio,comisionesN,'S0')
+      //console.log(datos)
+      dato = {
+        id: element.id,
+        actividad: element.actividad_nombre,
+        anio,
+        sede: sede === '1' ? 'M0' : sede === '2' ? 'S0' : sede === '3' ? 'GA' : 'SM',
+        comisiones: comisionesN,
+        codigosmat: codigosmatN
+      }
+      //console.log(arrayCapo)
+
+      comisionesN = ''
+      codigosmatN = ''
+      //console.log('P')
+
+      arrayCapo.push(dato)
+
+
+
+
 
     });
-    
-    
-   
+
+
+
   }
 
   setTimeout(() => {
-       //console.log('fin')
+    //console.log('fin')
     //console.log(arrayCapo)
- 
-
- // console.log(arrayCapo)
-  if(arrayCapo && arrayCapo.length>0){
-  
-  
-    //console.log(arrayCapo)
-    
-    arrayCapo.forEach( elemento=>{
-      setTimeout(async() =>{
-     
-        tratamiento_examenes(elemento.id, elemento.comisiones, elemento.codigosmat, elemento.anio)
-    }, 2000)
 
 
-     // setTimeout(()=>console.log('na'),1000)
-      //tratarDatos(datos,anio,elemento.actividad, elemento.sede)
-   
-      //console.log(result)
-      
-    })
-  
-    
- 
-} else{
-  console.log('nada')
+    // console.log(arrayCapo)
+    if (arrayCapo && arrayCapo.length > 0) {
+
+
+      //console.log(arrayCapo)
+
+      arrayCapo.forEach(elemento => {
+        setTimeout(async () => {
+
+          tratamiento_examenes(elemento.id, elemento.comisiones, elemento.codigosmat, elemento.anio)
+        }, 2000)
+
+
+        // setTimeout(()=>console.log('na'),1000)
+        //tratarDatos(datos,anio,elemento.actividad, elemento.sede)
+
+        //console.log(result)
+
+      })
+
+
+
+    } else {
+      console.log('nada')
+    }
+  }, 2000);
+  res.send({ message: 'OK' })
 }
-}, 2000);
-res.send({message:'OK'}) 
-}
 
 
 
-const grabarDatosIndice= async(id, relae1,relae2,indiceC1,indiceC2)=>{
+const grabarDatosIndice = async (id, relae1, relae2, indiceC1, indiceC2) => {
 
 
-  let sqlu=`UPDATE fce_per.dash_actividad_resultados SET relacion_e1=${relae1}, relacion_e2=${relae2}
+  let sqlu = `UPDATE fce_per.dash_actividad_resultados SET relacion_e1=${relae1}, relacion_e2=${relae2}
   , indice_e1=${indiceC1}, indice_e2=${indiceC2}  WHERE id=${id}`
   try {
-    const resu= await coneccionDB.query(sqlu)
+    const resu = await coneccionDB.query(sqlu)
     return 'ok2'
   } catch (error) {
     console.log(error)
@@ -643,36 +643,36 @@ const grabarDatosIndice= async(id, relae1,relae2,indiceC1,indiceC2)=>{
 }
 
 
-export const calculoIndicesTotales =async (req,res)=>{
-  const {anio,sede}=req.params
-  
+export const calculoIndicesTotales = async (req, res) => {
+  const { anio, sede } = req.params
+
   let sqlstr = `select total_inscriptos,relacion_regular,relacion_promocion, aprobadase1, aprobadase2, id 
-   from fce_per.dash_actividad_resultados where anio_academico=${anio} and sede='${sede}'` 
-  
+   from fce_per.dash_actividad_resultados where anio_academico=${anio} and sede='${sede}'`
+
 
   try {
-  const result = await coneccionDB.query(sqlstr)
-  if (result.rows){
-    result.rows.forEach( async element=>{
-      let totai= element.total_inscriptos
-      let r_regu = element.relacion_regular
-      //let r_promo = element.relacion_promocion
-      let aproe1 = element.aprobadase1 
-      let aproe2 = element.aprobadase2
+    const result = await coneccionDB.query(sqlstr)
+    if (result.rows) {
+      result.rows.forEach(async element => {
+        let totai = element.total_inscriptos
+        let r_regu = element.relacion_regular
+        //let r_promo = element.relacion_promocion
+        let aproe1 = element.aprobadase1
+        let aproe2 = element.aprobadase2
 
-    let relae1=(aproe1/totai).toFixed(2)
-    let relae2=(aproe2/totai).toFixed(2)
-    let indiceC1= parseFloat(r_regu) * 0.7 + (parseFloat(relae1)) * 0.3
-    let indiceC2= parseFloat(r_regu) * 0.7 + (parseFloat(relae2)) * 0.3
-    await grabarDatosIndice(element.id, relae1,relae2,indiceC1.toFixed(3),indiceC2.toFixed(3))
-    })
-  }
+        let relae1 = (aproe1 / totai).toFixed(2)
+        let relae2 = (aproe2 / totai).toFixed(2)
+        let indiceC1 = parseFloat(r_regu) * 0.7 + (parseFloat(relae1)) * 0.3
+        let indiceC2 = parseFloat(r_regu) * 0.7 + (parseFloat(relae2)) * 0.3
+        await grabarDatosIndice(element.id, relae1, relae2, indiceC1.toFixed(3), indiceC2.toFixed(3))
+      })
+    }
 
   } catch (error) {
     console.log(error)
   }
-  res.send({message:'Ok'})
-} 
+  res.send({ message: 'Ok' })
+}
 
 
 
@@ -681,13 +681,13 @@ export const calculoIndicesTotales =async (req,res)=>{
 ////
 //cantidad de materias aprobadas por alumno en un año
 //
-const alumnost =async(anio,sede,propuesta)=>{
+const alumnost = async (anio, sede, propuesta) => {
 
-  let ubi='1'
-  if (sede===0){
-    ubi='1,2'
+  let ubi = '1'
+  if (sede === 0) {
+    ubi = '1,2'
   }
-    
+
   const sqlstr = `
            SELECT count(sa.alumno) as canti
         FROM negocio.sga_propuestas_aspira spa
@@ -701,32 +701,32 @@ const alumnost =async(anio,sede,propuesta)=>{
  `;
 
   try {
-      const resu = await coneccionDB.query(sqlstr, [anio, propuesta]);
-      //console.log(resu)
-      return resu.rows[0].canti
+    const resu = await coneccionDB.query(sqlstr, [anio, propuesta]);
+    //console.log(resu)
+    return resu.rows[0].canti
 
   } catch (error) {
-      console.error('Error en la consulta:', error);
-      return ({ message: 'Ocurrió un error en el servidor.' });
+    console.error('Error en la consulta:', error);
+    return ({ message: 'Ocurrió un error en el servidor.' });
   }
 }
 //////
 
-const tratarQry=(alumnos)=>{
+const tratarQry = (alumnos) => {
 
-  let tabla=[]
-  let datos={
-      cero:0,
-      una:alumnos.filter(alumno => alumno.total_aprobadas==='1').length,
-      dos:alumnos.filter(alumno => alumno.total_aprobadas==='2').length,
-      tres:alumnos.filter(alumno => alumno.total_aprobadas==='3').length,
-      cuatro:alumnos.filter(alumno => alumno.total_aprobadas==='4').length,
-      cinco:alumnos.filter(alumno => alumno.total_aprobadas==='5').length,
-      seis:alumnos.filter(alumno => alumno.total_aprobadas==='6').length,
-      siete:alumnos.filter(alumno => alumno.total_aprobadas==='7').length,
-      ocho:alumnos.filter(alumno => alumno.total_aprobadas==='8').length,
-      nueve:alumnos.filter(alumno => alumno.total_aprobadas==='9').length,
-      nuevemas:alumnos.filter(alumno => parseInt(alumno.total_aprobadas)>9).length,
+  let tabla = []
+  let datos = {
+    cero: 0,
+    una: alumnos.filter(alumno => alumno.total_aprobadas === '1').length,
+    dos: alumnos.filter(alumno => alumno.total_aprobadas === '2').length,
+    tres: alumnos.filter(alumno => alumno.total_aprobadas === '3').length,
+    cuatro: alumnos.filter(alumno => alumno.total_aprobadas === '4').length,
+    cinco: alumnos.filter(alumno => alumno.total_aprobadas === '5').length,
+    seis: alumnos.filter(alumno => alumno.total_aprobadas === '6').length,
+    siete: alumnos.filter(alumno => alumno.total_aprobadas === '7').length,
+    ocho: alumnos.filter(alumno => alumno.total_aprobadas === '8').length,
+    nueve: alumnos.filter(alumno => alumno.total_aprobadas === '9').length,
+    nuevemas: alumnos.filter(alumno => parseInt(alumno.total_aprobadas) > 9).length,
 
   }
   tabla.push(datos)
@@ -734,8 +734,8 @@ const tratarQry=(alumnos)=>{
 }
 
 ////
-const convertirMatriz=(datola, datole, datocpn,datollo, datolaAnt, datoleAnt, datocpnAnt,datolloAnt, datolaAnt1, datoleAnt1, datocpnAnt1,datolloAnt1)=>{
-  const matriz=[] 
+const convertirMatriz = (datola, datole, datocpn, datollo, datolaAnt, datoleAnt, datocpnAnt, datolloAnt, datolaAnt1, datoleAnt1, datocpnAnt1, datolloAnt1) => {
+  const matriz = []
   matriz.push(datolloAnt1)
   matriz.push(datocpnAnt1)
   matriz.push(datolaAnt1)
@@ -748,22 +748,22 @@ const convertirMatriz=(datola, datole, datocpn,datollo, datolaAnt, datoleAnt, da
   matriz.push(datocpn)
   matriz.push(datola)
   matriz.push(datole)
- 
 
- return matriz
+
+  return matriz
 }
 
-const cargarDatos = async(anio,sede,propuesta,fecha)=>{
- 
-  let ubi='1'
-  if (sede===0){
-    ubi='1,2'
+const cargarDatos = async (anio, sede, propuesta, fecha) => {
+
+  let ubi = '1'
+  if (sede === 0) {
+    ubi = '1,2'
   }
-  let wherefecha=''
-  
-  if(fecha!=='0'){
-    wherefecha='and vha.fecha <= $3'
-  
+  let wherefecha = ''
+
+  if (fecha !== '0') {
+    wherefecha = 'and vha.fecha <= $3'
+
   }
   const sqlstr = `
   SELECT alumno, COUNT(alumno) AS total_aprobadas
@@ -785,49 +785,49 @@ const cargarDatos = async(anio,sede,propuesta,fecha)=>{
   GROUP BY alumno;
 `;
 
-let resu=null
-try {
+  let resu = null
+  try {
 
-  // Ejecutar la consulta con parámetros
-  if (fecha !== '0'){
-    
-    resu = await coneccionDB.query(sqlstr, [anio, propuesta,fecha]);
-   
-  }else{
-    resu = await coneccionDB.query(sqlstr, [anio, propuesta]);
-  }
-      // Verificar si hay resultados y enviar la respuesta
-      if (resu.rows.length === 0) {
-        return 'No se encontraron registros'
-      } else if (resu.rowCount>0) {
-          let carrera=''
-          let alumnostmatap= resu.rowCount
-          let alumnostI = parseInt( await alumnost(anio,sede,propuesta))
-          let alucero=alumnostI-alumnostmatap
-          //console.log(alucero,alumnostmatap,alumnostI)
-          const tablavalores = tratarQry(resu.rows)
-          tablavalores[0].cero=alucero
-          tablavalores[0].anio=anio
-          tablavalores[0].sede=sede
-          tablavalores[0].totali=alumnostI
-          if(propuesta===2){
-            carrera='LA'
-          }else if (propuesta===3){
-            carrera='LE'
-          }else if(propuesta===7){
-            carrera='LLO'
-          }else if(propuesta===8){
-            carrera='CP'
-          }
-          tablavalores[0].propuesta=carrera
-            //  console.log(tablavalores)
-          return tablavalores
+    // Ejecutar la consulta con parámetros
+    if (fecha !== '0') {
 
-          
+      resu = await coneccionDB.query(sqlstr, [anio, propuesta, fecha]);
+
+    } else {
+      resu = await coneccionDB.query(sqlstr, [anio, propuesta]);
+    }
+    // Verificar si hay resultados y enviar la respuesta
+    if (resu.rows.length === 0) {
+      return 'No se encontraron registros'
+    } else if (resu.rowCount > 0) {
+      let carrera = ''
+      let alumnostmatap = resu.rowCount
+      let alumnostI = parseInt(await alumnost(anio, sede, propuesta))
+      let alucero = alumnostI - alumnostmatap
+      //console.log(alucero,alumnostmatap,alumnostI)
+      const tablavalores = tratarQry(resu.rows)
+      tablavalores[0].cero = alucero
+      tablavalores[0].anio = anio
+      tablavalores[0].sede = sede
+      tablavalores[0].totali = alumnostI
+      if (propuesta === 2) {
+        carrera = 'LA'
+      } else if (propuesta === 3) {
+        carrera = 'LE'
+      } else if (propuesta === 7) {
+        carrera = 'LLO'
+      } else if (propuesta === 8) {
+        carrera = 'CP'
       }
+      tablavalores[0].propuesta = carrera
+      //  console.log(tablavalores)
+      return tablavalores
+
+
+    }
   } catch (error) {
-      console.error('Error en la consulta:', error);
-     return 'Ocurrió un error en el servidor.';
+    console.error('Error en la consulta:', error);
+    return 'Ocurrió un error en el servidor.';
   }
 
 
@@ -836,51 +836,51 @@ try {
 ////
 
 
-export const generarReporteAprobadasAnioUno =async (req, res)=>{
+export const generarReporteAprobadasAnioUno = async (req, res) => {
 
-  const {anio, sede, fecha} = req.params
-  let fechaA='0'
-  let fechaAP='0'
-   let fechaAP1='0'
+  const { anio, sede, fecha } = req.params
+  let fechaA = '0'
+  let fechaAP = '0'
+  let fechaAP1 = '0'
 
-  if (fecha !== '0'){
-    fechaA=fecha
-    fechaAP = fechaA.replace(anio, anio-1);
-    fechaAP1=  fechaA.replace(anio, anio-2);
+  if (fecha !== '0') {
+    fechaA = fecha
+    fechaAP = fechaA.replace(anio, anio - 1);
+    fechaAP1 = fechaA.replace(anio, anio - 2);
     //console.log(fechaA, fechaAP)
   }
 
   try {
 
-  
-  if (parseInt(sede)===0){
-    //console.log('hola')
-    const [datola, datole, datocpn, datollo, datolaAnt, datoleAnt, datocpnAnt, datolloAnt,datolaAnt1, datoleAnt1, datocpnAnt1, datolloAnt1] = await Promise.all([
-      cargarDatos(anio, sede, 2,fechaA),
-      cargarDatos(anio, sede, 3,fechaA),
-      cargarDatos(anio, sede, 7, fechaA),
-      cargarDatos(anio, sede, 8, fechaA),
-      cargarDatos(anio-1, sede, 2, fechaAP),
-      cargarDatos(anio-1, sede, 3, fechaAP),
-      cargarDatos(anio-1, sede, 7, fechaAP),
-      cargarDatos(anio-1, sede, 8, fechaAP),
-      cargarDatos(anio-2, sede, 2, fechaAP1),
-      cargarDatos(anio-2, sede, 3, fechaAP1),
-      cargarDatos(anio-2, sede, 7, fechaAP1),
-      cargarDatos(anio-2, sede, 8, fechaAP1),
-    ]);
 
-    //console.log(datola[0], datole[0], datocpn[0],datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0],datolloAnt[0], datolaAnt1[0], datoleAnt1[0], datocpnAnt1[0],datolloAnt1[0])
-    const matriz= convertirMatriz(datola[0], datole[0], datocpn[0],datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0],datolloAnt[0], datolaAnt1[0], datoleAnt1[0], datocpnAnt1[0],datolloAnt1[0])
-   
-    if (matriz[0]==='N'){
-      res.send([])
-    }else{
-    //console.log(matriz)
-    res.send(matriz.filter(item => item !== 'N'))
+    if (parseInt(sede) === 0) {
+      //console.log('hola')
+      const [datola, datole, datocpn, datollo, datolaAnt, datoleAnt, datocpnAnt, datolloAnt, datolaAnt1, datoleAnt1, datocpnAnt1, datolloAnt1] = await Promise.all([
+        cargarDatos(anio, sede, 2, fechaA),
+        cargarDatos(anio, sede, 3, fechaA),
+        cargarDatos(anio, sede, 7, fechaA),
+        cargarDatos(anio, sede, 8, fechaA),
+        cargarDatos(anio - 1, sede, 2, fechaAP),
+        cargarDatos(anio - 1, sede, 3, fechaAP),
+        cargarDatos(anio - 1, sede, 7, fechaAP),
+        cargarDatos(anio - 1, sede, 8, fechaAP),
+        cargarDatos(anio - 2, sede, 2, fechaAP1),
+        cargarDatos(anio - 2, sede, 3, fechaAP1),
+        cargarDatos(anio - 2, sede, 7, fechaAP1),
+        cargarDatos(anio - 2, sede, 8, fechaAP1),
+      ]);
+
+      //console.log(datola[0], datole[0], datocpn[0],datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0],datolloAnt[0], datolaAnt1[0], datoleAnt1[0], datocpnAnt1[0],datolloAnt1[0])
+      const matriz = convertirMatriz(datola[0], datole[0], datocpn[0], datollo[0], datolaAnt[0], datoleAnt[0], datocpnAnt[0], datolloAnt[0], datolaAnt1[0], datoleAnt1[0], datocpnAnt1[0], datolloAnt1[0])
+
+      if (matriz[0] === 'N') {
+        res.send([])
+      } else {
+        //console.log(matriz)
+        res.send(matriz.filter(item => item !== 'N'))
+      }
     }
-  }
-  }catch(error){
+  } catch (error) {
     console.error('Error en la consulta:', error);
     res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
   }
@@ -896,31 +896,31 @@ export const generarReporteAprobadasAnioUno =async (req, res)=>{
 //traer numero de ingresantes anio propuestas CP, LA, LE y LLO sedes mza,sr y este
 
 
-const obtenerAniocursadaactividad = async(propuesta, actividad)=>{
+const obtenerAniocursadaactividad = async (propuesta, actividad) => {
 
-let  sqlstr=`select anio_de_cursada from negocio.sga_elementos_plan sep
+  let sqlstr = `select anio_de_cursada from negocio.sga_elementos_plan sep
 inner join negocio.sga_planes_versiones spv on spv.plan_version = sep.plan_version 
 inner join negocio.sga_planes sp on sp.plan=spv.plan
 where spv.estado='V'  and propuesta=$1 and sep.nombre =$2`
 
-try {
-  const resu = await coneccionDB.query(sqlstr, [propuesta, actividad]);
-  //console.log(resu.rows)
-  return resu.rows
+  try {
+    const resu = await coneccionDB.query(sqlstr, [propuesta, actividad]);
+    //console.log(resu.rows)
+    return resu.rows
 
-} catch (error) {
-  console.error('Error en la consulta:', error);
-  return ({ message: 'Ocurrió un error en el servidor.' });
+  } catch (error) {
+    console.error('Error en la consulta:', error);
+    return ({ message: 'Ocurrió un error en el servidor.' });
+  }
+
+
 }
 
+const obtenerIngresantesCarreraSede = async (anio, propuesta) => {
 
-}
 
-const obtenerIngresantesCarreraSede = async (anio, propuesta)=>{
 
-  
-
-  const sqlstr =`select count(*) as total
+  const sqlstr = `select count(*) as total
             FROM negocio.sga_propuestas_aspira spa
             INNER JOIN negocio.sga_alumnos sa ON sa.persona = spa.persona AND sa.propuesta = spa.propuesta
             WHERE anio_academico = $1
@@ -937,10 +937,10 @@ const obtenerIngresantesCarreraSede = async (anio, propuesta)=>{
     //console.log(resu.rows)
     return resu.rows
 
-} catch (error) {
+  } catch (error) {
     console.error('Error en la consulta:', error);
     return ({ message: 'Ocurrió un error en el servidor.' });
-}
+  }
 
 
 
@@ -948,10 +948,10 @@ const obtenerIngresantesCarreraSede = async (anio, propuesta)=>{
 
 // Calcular cantidad de regulares por año, carrera
 
-const obtenerCantidadregularesPropuesta = async ()=>{
+const obtenerCantidadregularesPropuesta = async () => {
 
 
-    const sqlstr=`select actividad_nombre, resultado, COUNT(actividad_nombre) AS cantidad from negocio.vw_regularidades vr
+  const sqlstr = `select actividad_nombre, resultado, COUNT(actividad_nombre) AS cantidad from negocio.vw_regularidades vr
            WHERE alumno IN (
             SELECT sa.alumno
             FROM negocio.sga_propuestas_aspira spa
@@ -967,16 +967,16 @@ const obtenerCantidadregularesPropuesta = async ()=>{
         GROUP BY actividad_nombre, resultado`
 
 
-        try {
-          const resu = await coneccionDB.query(sqlstr, [anio, ubicacion, propuesta, fecha]);
-          //console.log(resu)
-          return resu.rows
-      
-      } catch (error) {
-          console.error('Error en la consulta:', error);
-          return ({ message: 'Ocurrió un error en el servidor.' });
-      }
-            
+  try {
+    const resu = await coneccionDB.query(sqlstr, [anio, ubicacion, propuesta, fecha]);
+    //console.log(resu)
+    return resu.rows
+
+  } catch (error) {
+    console.error('Error en la consulta:', error);
+    return ({ message: 'Ocurrió un error en el servidor.' });
+  }
+
 
 
 
@@ -985,19 +985,19 @@ const obtenerCantidadregularesPropuesta = async ()=>{
 
 
 
-const obtenerCantidadregularesPropuestaActividad = async (anio,propuesta,codmat, fecha)=>{
+const obtenerCantidadregularesPropuestaActividad = async (anio, propuesta, codmat, fecha) => {
 
   //console.log(anio,propuesta,codmat,fecha)
   let wherefecha = '';
-  const params = [anio, propuesta,codmat];
-  
-  if (fecha !== '0') {
-      wherefecha = 'AND vr.fecha <= $4';
-      params.push(fecha);
-  }
-  
+  const params = [anio, propuesta, codmat];
 
-  const sqlstr=` select COUNT(*) AS cantidad from negocio.vw_regularidades vr
+  if (fecha !== '0') {
+    wherefecha = 'AND vr.fecha <= $4';
+    params.push(fecha);
+  }
+
+
+  const sqlstr = ` select COUNT(*) AS cantidad from negocio.vw_regularidades vr
 			WHERE alumno IN (
             SELECT sa.alumno
             FROM negocio.sga_propuestas_aspira spa
@@ -1012,15 +1012,15 @@ const obtenerCantidadregularesPropuestaActividad = async (anio,propuesta,codmat,
         AND anio_academico = $1  and estado='A' and resultado ='A' and actividad_codigo=$3  ${wherefecha}`
 
 
-        try {
-          // Configurar search_path y ejecutar consulta en una transacción
-          await coneccionDB.query('SET search_path TO negocio');
-          const result = await coneccionDB.query(sqlstr, params);
-          return result.rows;
-      } catch (error) {
-          console.error('Error en obtenerAprobadasPropuestas:', error);
-          return []; // Retornar array vacío para mantener la estructura
-      }
+  try {
+    // Configurar search_path y ejecutar consulta en una transacción
+    await coneccionDB.query('SET search_path TO negocio');
+    const result = await coneccionDB.query(sqlstr, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Error en obtenerAprobadasPropuestas:', error);
+    return []; // Retornar array vacío para mantener la estructura
+  }
 
 
 
@@ -1036,10 +1036,10 @@ const obtenerCantidadregularesPropuestaActividad = async (anio,propuesta,codmat,
 const obtenerAprobadasPropuestas = async (anio, propuesta, fecha) => {
   let wherefecha = '';
   const params = [anio, propuesta];
-  
+
   if (fecha !== '0') {
-      wherefecha = 'AND vha.fecha <= $3';
-      params.push(fecha);
+    wherefecha = 'AND vha.fecha <= $3';
+    params.push(fecha);
   }
 
   const sqlstr = `
@@ -1065,118 +1065,118 @@ const obtenerAprobadasPropuestas = async (anio, propuesta, fecha) => {
   `;
 
   try {
-      // Configurar search_path y ejecutar consulta en una transacción
-      await coneccionDB.query('SET search_path TO negocio');
-      const result = await coneccionDB.query(sqlstr, params);
-      return result.rows;
+    // Configurar search_path y ejecutar consulta en una transacción
+    await coneccionDB.query('SET search_path TO negocio');
+    const result = await coneccionDB.query(sqlstr, params);
+    return result.rows;
   } catch (error) {
-      console.error('Error en obtenerAprobadasPropuestas:', error);
-      return []; // Retornar array vacío para mantener la estructura
+    console.error('Error en obtenerAprobadasPropuestas:', error);
+    return []; // Retornar array vacío para mantener la estructura
   }
 };
 
 const obtenerDatosReporte = async (anio, fecha) => {
   try {
-      const propuestas = [2, 3, 8];
-      const promesas = propuestas.map(propuesta => 
-          obtenerAprobadasPropuestas(anio, propuesta, fecha)
-      );
+    const propuestas = [2, 3, 8];
+    const promesas = propuestas.map(propuesta =>
+      obtenerAprobadasPropuestas(anio, propuesta, fecha)
+    );
 
-      const resultados = await Promise.all(promesas);
+    const resultados = await Promise.all(promesas);
 
-      return resultados.flatMap((datos, index) => 
-          datos.map(row => ({
-              anio: anio,
-              fechaR:fecha,
-              propuesta: propuestas[index],
-              codigomat: row.actividad_codigo,
-              nombremat: row.actividad_nombre,
-              aprobadas: row.cantidad,
-              relap:0.00,
-              regulares:0,
-              relreg:0.00,
-              libres:0,
-              rellibres:0.00,
-              totalI:0,
-              aniocursada:0
-          }))
-      );
-      
+    return resultados.flatMap((datos, index) =>
+      datos.map(row => ({
+        anio: anio,
+        fechaR: fecha,
+        propuesta: propuestas[index],
+        codigomat: row.actividad_codigo,
+        nombremat: row.actividad_nombre,
+        aprobadas: row.cantidad,
+        relap: 0.00,
+        regulares: 0,
+        relreg: 0.00,
+        libres: 0,
+        rellibres: 0.00,
+        totalI: 0,
+        aniocursada: 0
+      }))
+    );
+
   } catch (error) {
-      console.error('Error en obtenerDatosReporte:', error);
-      return [];
+    console.error('Error en obtenerDatosReporte:', error);
+    return [];
   }
 };
 
 export const traerReporteActividades = async (req, res) => {
   try {
-      const { anio, fecha } = req.params;
-      
-      const anioNumerico = parseInt(anio, 10);
-      let fechaRA='0'
-      let fechaRAA='0'
-      if (fecha==='0'){
-          fechaRAA='0'
-          fechaRA='0'
-      }else{
-      
+    const { anio, fecha } = req.params;
+
+    const anioNumerico = parseInt(anio, 10);
+    let fechaRA = '0'
+    let fechaRAA = '0'
+    if (fecha === '0') {
+      fechaRAA = '0'
+      fechaRA = '0'
+    } else {
+
       let partes = fecha.split('-');
       let nuevoAnio = parseInt(partes[0]) - 1;
-      fechaRAA =  `${nuevoAnio}-${partes[1]}-${partes[2]}`;
-      fechaRA=fecha
+      fechaRAA = `${nuevoAnio}-${partes[1]}-${partes[2]}`;
+      fechaRA = fecha
     }
-     
-      //console.log(fechaRA, fechaRAA)
-      if (isNaN(anioNumerico)) {
-          return res.status(400).json({ error: 'Año inválido' });
-      }
 
-      const [datoanioA, datoanio] = await Promise.all([
-          obtenerDatosReporte(anioNumerico - 1, fechaRAA),
-          obtenerDatosReporte(anioNumerico, fechaRA)
-      ]);
-      let datosCombinados = [...datoanioA, ...datoanio] 
-      //console.log(datosCombinados)
-      const datosActualizados = await Promise.all(
-        datosCombinados.map(async (element) => {
-            const regulares = await obtenerCantidadregularesPropuestaActividad(
-                element.anio,
-                element.propuesta,
-                element.codigomat,
-                element.fechaR
-            );
-            const totalIng = await obtenerIngresantesCarreraSede(element.anio, element.propuesta);
-            const anicur = await obtenerAniocursadaactividad(element.propuesta, element.nombremat)
-            return {
-                ...element,
-                regulares: regulares[0].cantidad - element.aprobadas <0 ? 0 :regulares[0].cantidad - element.aprobadas,
-                totalI:totalIng[0].total,
-                aniocursada:anicur[0].anio_de_cursada
-                
-                
-            };
-        })
+    //console.log(fechaRA, fechaRAA)
+    if (isNaN(anioNumerico)) {
+      return res.status(400).json({ error: 'Año inválido' });
+    }
+
+    const [datoanioA, datoanio] = await Promise.all([
+      obtenerDatosReporte(anioNumerico - 1, fechaRAA),
+      obtenerDatosReporte(anioNumerico, fechaRA)
+    ]);
+    let datosCombinados = [...datoanioA, ...datoanio]
+    //console.log(datosCombinados)
+    const datosActualizados = await Promise.all(
+      datosCombinados.map(async (element) => {
+        const regulares = await obtenerCantidadregularesPropuestaActividad(
+          element.anio,
+          element.propuesta,
+          element.codigomat,
+          element.fechaR
+        );
+        const totalIng = await obtenerIngresantesCarreraSede(element.anio, element.propuesta);
+        const anicur = await obtenerAniocursadaactividad(element.propuesta, element.nombremat)
+        return {
+          ...element,
+          regulares: regulares[0].cantidad - element.aprobadas < 0 ? 0 : regulares[0].cantidad - element.aprobadas,
+          totalI: totalIng[0].total,
+          aniocursada: anicur[0].anio_de_cursada
+
+
+        };
+      })
     );
-    
 
-    datosActualizados.map((element)=>{
-      element.libres=parseInt(element.totalI) - (parseInt(element.aprobadas) + element.regulares)
-      element.relap= (parseInt(element.aprobadas) / parseInt(element.totalI)).toFixed(3)
-      element.relreg= (parseInt(element.regulares) / parseInt(element.totalI)).toFixed(3)
-      element.rellibres= ((parseInt(element.totalI) - (parseInt(element.aprobadas) + element.regulares)) / parseInt(element.totalI)).toFixed(3)
+
+    datosActualizados.map((element) => {
+      element.libres = parseInt(element.totalI) - (parseInt(element.aprobadas) + element.regulares)
+      element.relap = (parseInt(element.aprobadas) / parseInt(element.totalI)).toFixed(3)
+      element.relreg = (parseInt(element.regulares) / parseInt(element.totalI)).toFixed(3)
+      element.rellibres = ((parseInt(element.totalI) - (parseInt(element.aprobadas) + element.regulares)) / parseInt(element.totalI)).toFixed(3)
     })
 
     if (!Array.isArray(datosActualizados)) {
       console.error("datosActualizados no es un array, convirtiendo a array vacío.");
       datosActualizados = [];
-  }
+    }
 
     res.send(datosActualizados)
-    
-      
+
+
   } catch (error) {
-      console.error('Error en traerReporteActividades:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error en traerReporteActividades:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -1188,10 +1188,10 @@ export const traerReporteActividades = async (req, res) => {
 
 //materias aprobas por alumno
 const obtenerAprobadasAlumnosMaterias = async (anio, propuesta) => {
-  
+
   const params = [anio, propuesta];
-  
-  
+
+
 
   const sqlstr = `SELECT alumno, COUNT(alumno) AS total_aprobadas
     FROM negocio.vw_hist_academica vha
@@ -1214,42 +1214,42 @@ const obtenerAprobadasAlumnosMaterias = async (anio, propuesta) => {
   `;
 
   try {
-      // Configurar search_path y ejecutar consulta en una transacción
-      await coneccionDB.query('SET search_path TO negocio');
-      const result = await coneccionDB.query(sqlstr, params);
-      return result.rows;
+    // Configurar search_path y ejecutar consulta en una transacción
+    await coneccionDB.query('SET search_path TO negocio');
+    const result = await coneccionDB.query(sqlstr, params);
+    return result.rows;
   } catch (error) {
-      console.error('Error en obtenerAprobadasMateriasAlumnos:', error);
-      return []; // Retornar array vacío para mantener la estructura
+    console.error('Error en obtenerAprobadasMateriasAlumnos:', error);
+    return []; // Retornar array vacío para mantener la estructura
   }
 };
 
 //entrada t
 
-export const obtenerDatosreporteAlumnosMat=async (req,res)=>{
+export const obtenerDatosreporteAlumnosMat = async (req, res) => {
 
-  const {anio, matap}=req.params
+  const { anio, matap } = req.params
   const propuestas = [2, 3, 8];
-  const promesas = propuestas.map(propuesta => 
+  const promesas = propuestas.map(propuesta =>
     obtenerAprobadasAlumnosMaterias(anio, propuesta)
   );
 
   const resultados = await Promise.all(promesas);
 
-  const arrayplano = resultados.flatMap((datos, index) => 
+  const arrayplano = resultados.flatMap((datos, index) =>
     datos.map(row => ({
-        anio: anio,
-        propuesta: propuestas[index],
-        alumno: row.alumno,
-        aprobadas: row.total_aprobadas,
-        legajo:'',
-        apellido:'',
-        nombres:''
+      anio: anio,
+      propuesta: propuestas[index],
+      alumno: row.alumno,
+      aprobadas: row.total_aprobadas,
+      legajo: '',
+      apellido: '',
+      nombres: ''
     }))
-);
+  );
   //console.log(arrayplano)
   try {
-    res.send(arrayplano.filter(element=>parseInt(element.aprobadas) > 8))
+    res.send(arrayplano.filter(element => parseInt(element.aprobadas) > 8))
   } catch (error) {
     console.error('Error en traerReporteActividades:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -1260,25 +1260,49 @@ export const obtenerDatosreporteAlumnosMat=async (req,res)=>{
 //reporte alumnos coeficientes de t carrera
 
 
-export const reportAlumnosCoeficienteOptimo= async (req,res)=>{
+export const reportAlumnosCoeficienteOptimo = async (req, res) => {
 
-  const {anio, propuestas, matap}=req.params
- //console.log(propuestas)
-  const sqlstr=`select legajo,ai.nro_documento ,ai.apellido ,nombres,ubicacion,propuesta,ai.promedioca ,ai.promediosa, aprobadas, 
-  reprobadas, ai.coef_tcarrera  from fce_per.alumnos_info ai where ai.anio_ingreso_fac =${anio}  and ai.propuesta in 
-  (${propuestas}) and ai.aprobadas >=${matap} 
+  const { anio, propuestas, matap } = req.params
+  //console.log(propuestas)
+  const sqlstr = `select alumno,legajo,ai.nro_documento ,ai.apellido ,nombres,ubicacion,propuesta,ai.plan,ai.anio_ingreso_pro,ai.anio_ingreso_fac,ai.promedioca ,ai.promediosa, aprobadas, 
+  reprobadas, ai.coef_tcarrera  from fce_per.alumnos_info ai where ai.calidad='A' and ai.anio_ingreso_pro =${anio}  and ai.propuesta in 
+  (${propuestas}) and ai.aprobadas >=${matap} order by ai.coef_tcarrera
 `
-//console.log(sqlstr) 
-try {
-  const result = await coneccionDB.query(sqlstr);
-      res.send(result.rows);
+  //console.log(sqlstr) 
+  try {
+    const result = await coneccionDB.query(sqlstr);
+    res.send(result.rows);
   } catch (error) {
-      console.error('Error en obtenerAlumnos:', error);
-      return []; // Retornar array vacío para mantener la estructura
+    console.error('Error en obtenerAlumnos:', error);
+    return []; // Retornar array vacío para mantener la estructura
 
+  }
 }
-}
+///////
+///////
+//reporte alumnos coeficientes de t carrera
 
+
+export const reportAlumnosCoeficienteOptimoCoef = async (req, res) => {
+
+
+  const { propuestas, desde, hasta } = req.params
+  //console.log(propuestas)
+  const sqlstr = `select alumno,legajo,ai.nro_documento ,ai.apellido ,nombres,ubicacion,propuesta,ai.plan,ai.anio_ingreso_pro,ai.anio_ingreso_fac,ai.promedioca ,ai.promediosa, aprobadas, 
+  reprobadas, ai.coef_tcarrera  from fce_per.alumnos_info ai where ai.calidad='A' and ai.coef_tcarrera >=${desde} and ai.coef_tcarrera <=${hasta}  and ai.propuesta in 
+  (${propuestas}) order by ai.coef_tcarrera
+`
+  //console.log(sqlstr) 
+  try {
+    const result = await coneccionDB.query(sqlstr);
+    res.send(result.rows);
+  } catch (error) {
+    console.error('Error en obtenerAlumnos:', error);
+    return []; // Retornar array vacío para mantener la estructura
+
+  }
+}
+///////
 /////
 
 
@@ -1298,11 +1322,11 @@ const traerresultadocomision = async (comision) => {
   `;
 
   try {
-      const result = await coneccionDB.query(sqlstr);
-      return result.rows;
+    const result = await coneccionDB.query(sqlstr);
+    return result.rows;
   } catch (error) {
-      console.error('Error en obtener resultados de comisiones:', error);
-      return []; // Retornar array vacío para evitar errores en procesamiento
+    console.error('Error en obtener resultados de comisiones:', error);
+    return []; // Retornar array vacío para evitar errores en procesamiento
   }
 };
 
@@ -1310,64 +1334,64 @@ const traerresultadocomision = async (comision) => {
 
 /////esta es la papa de las comisiones 
 
-const tratarComisiones = async (comisiones,anio, sede) => {
+const tratarComisiones = async (comisiones, anio, sede) => {
   const resultadocomisiones = [];
-  
+
   for (const element of comisiones) {
-      let resultados = await traerresultadocomision(element.comision);
-      //console.log(resultados)
-      // Inicializar objeto de datos
-      let dato = {
-          anio:anio,
-          sede:sede==='1'?'MZA':sede==='2'?'SRF':sede==='3'?'GALV':sede==='4'?'ESTE':'',
-          comision: element.comision,
-          codmat: element.codmat,
-          actividad: await traerNombreActividad(element.codmat),
-          propuesta: await traerNombrePropuesta(element.codmat),
-          nombre: element.nombre,
-          periodo: resultados.length > 0 ? resultados[0].periodo : '',
-          regulares: 0,
-          reprobados: 0,
-          ausentes: 0,
-          promocionados: 0,
-          total: 0,
-          aprobadose1: await traerExamenAprobadosComision(anio, element.comision, element.codmat, 1) || 0,
-          aprobadose2: await traerExamenAprobadosComision(anio, element.comision, element.codmat, 2) || 0,
-          contacto:await traercontacto(element.comision)
-      };
+    let resultados = await traerresultadocomision(element.comision);
+    //console.log(resultados)
+    // Inicializar objeto de datos
+    let dato = {
+      anio: anio,
+      sede: sede === '1' ? 'MZA' : sede === '2' ? 'SRF' : sede === '3' ? 'GALV' : sede === '4' ? 'ESTE' : '',
+      comision: element.comision,
+      codmat: element.codmat,
+      actividad: await traerNombreActividad(element.codmat),
+      propuesta: await traerNombrePropuesta(element.codmat),
+      nombre: element.nombre,
+      periodo: resultados.length > 0 ? resultados[0].periodo : '',
+      regulares: 0,
+      reprobados: 0,
+      ausentes: 0,
+      promocionados: 0,
+      total: 0,
+      aprobadose1: await traerExamenAprobadosComision(anio, element.comision, element.codmat, 1) || 0,
+      aprobadose2: await traerExamenAprobadosComision(anio, element.comision, element.codmat, 2) || 0,
+      contacto: await traercontacto(element.comision)
+    };
 
-      //console.log(resultados)
-      // Procesar los resultados obtenidos de la base de datos
-      resultados.forEach(resultado => {
-          if (resultado.origen === 'R') {
-              if (resultado.resultado === 'A') {
-                  dato.regulares += parseInt(resultado.count);
-              } else if (resultado.resultado === 'R') {
-                  dato.reprobados += parseInt(resultado.count);
-              } else if (resultado.resultado === 'U') {
-                  dato.ausentes += parseInt(resultado.count);
-              }
-          } else if (resultado.origen === 'P' && resultado.resultado === 'A') {
-              dato.promocionados += parseInt(resultado.count);
-          }
-      });
-
-      // Calcular total
-      dato.total = parseInt(dato.regulares) + parseInt(dato.reprobados) + parseInt(dato.ausentes);
-      if(dato.total>0){
-        dato.relreg=parseFloat((dato.regulares/dato.total).toFixed(2))
-        dato.relpro=parseFloat((dato.promocionados/dato.total).toFixed(2))
-        dato.relape1=parseFloat((dato.aprobadose1/dato.total).toFixed(2))
-        dato.relape2=parseFloat((dato.aprobadose2/dato.total).toFixed(2))
-        dato.indicec=parseFloat((dato.relreg * 0.7 + dato.relpro * 0.3).toFixed(2))
-        dato.indicee1=parseFloat((dato.relreg * 0.7 + (dato.relpro + dato.relape1 ) * 0.3).toFixed(2))
-        dato.indicee2=parseFloat((dato.relreg * 0.7 + (dato.relpro + dato.relape2)* 0.3).toFixed(2))
-        dato.regulares-=parseInt(dato.promocionados)
-        dato.aprobadose1+=parseInt(dato.promocionados)
-        dato.aprobadose2+=parseInt(dato.promocionados)
-      resultadocomisiones.push(dato);
+    //console.log(resultados)
+    // Procesar los resultados obtenidos de la base de datos
+    resultados.forEach(resultado => {
+      if (resultado.origen === 'R') {
+        if (resultado.resultado === 'A') {
+          dato.regulares += parseInt(resultado.count);
+        } else if (resultado.resultado === 'R') {
+          dato.reprobados += parseInt(resultado.count);
+        } else if (resultado.resultado === 'U') {
+          dato.ausentes += parseInt(resultado.count);
+        }
+      } else if (resultado.origen === 'P' && resultado.resultado === 'A') {
+        dato.promocionados += parseInt(resultado.count);
       }
+    });
+
+    // Calcular total
+    dato.total = parseInt(dato.regulares) + parseInt(dato.reprobados) + parseInt(dato.ausentes);
+    if (dato.total > 0) {
+      dato.relreg = parseFloat((dato.regulares / dato.total).toFixed(2))
+      dato.relpro = parseFloat((dato.promocionados / dato.total).toFixed(2))
+      dato.relape1 = parseFloat((dato.aprobadose1 / dato.total).toFixed(2))
+      dato.relape2 = parseFloat((dato.aprobadose2 / dato.total).toFixed(2))
+      dato.indicec = parseFloat((dato.relreg * 0.7 + dato.relpro * 0.3).toFixed(2))
+      dato.indicee1 = parseFloat((dato.relreg * 0.7 + (dato.relpro + dato.relape1) * 0.3).toFixed(2))
+      dato.indicee2 = parseFloat((dato.relreg * 0.7 + (dato.relpro + dato.relape2) * 0.3).toFixed(2))
+      dato.regulares -= parseInt(dato.promocionados)
+      dato.aprobadose1 += parseInt(dato.promocionados)
+      dato.aprobadose2 += parseInt(dato.promocionados)
+      resultadocomisiones.push(dato);
     }
+  }
   //console.log(resultadocomisiones)
 
   return resultadocomisiones;
@@ -1376,22 +1400,22 @@ const tratarComisiones = async (comisiones,anio, sede) => {
 
 
 /// materia
-const traerNombreActividad=async (codigomat)=>{
+const traerNombreActividad = async (codigomat) => {
 
-  let sqlstr=`select distinct nombre from negocio.sga_elementos se where codigo=$1`
+  let sqlstr = `select distinct nombre from negocio.sga_elementos se where codigo=$1`
 
   try {
-    const result = await coneccionDB.query(sqlstr,[codigomat]);
-      return result.rows[0].nombre;
+    const result = await coneccionDB.query(sqlstr, [codigomat]);
+    return result.rows[0].nombre;
   } catch (error) {
     console.log(error)
   }
 }
 
 // propuesta
-const traerNombrePropuesta=async (codigomat)=>{
+const traerNombrePropuesta = async (codigomat) => {
 
-  let sqlstr=` select distinct sp2.nombre  from negocio.sga_elementos_plan sep
+  let sqlstr = ` select distinct sp2.nombre  from negocio.sga_elementos_plan sep
 	 inner join negocio.sga_planes_versiones spv on spv.plan_version = sep.plan_version
 	 inner join negocio.sga_planes sp on sp.plan=spv.plan
 	 inner join negocio.sga_propuestas sp2 on sp2.propuesta = sp.propuesta
@@ -1400,24 +1424,24 @@ const traerNombrePropuesta=async (codigomat)=>{
 	 where se.codigo =$1 and spv.estado in ('A','V') and not spv.plan=1`
 
   try {
-    const result = await coneccionDB.query(sqlstr,[codigomat]);
+    const result = await coneccionDB.query(sqlstr, [codigomat]);
     if (result.rowCount === 1) {
       return result.rows[0].nombre;
-  } else if (result.rowCount > 1) {
+    } else if (result.rowCount > 1) {
       // Unir los nombres en un solo string separados por comas
       return result.rows.map(row => row.nombre).join(', ');
-  } else {
+    } else {
       return 'Sin datos';
-  }
+    }
   } catch (error) {
     console.log(error)
   }
 }
 
 
-const traercontacto=async (comision)=>{
+const traercontacto = async (comision) => {
 
-  let  sqlstr=`select distinct concat (concat(mp.nombres,' ', mp.apellido),'(', mpc.email,')') as contacto from negocio.sga_comisiones com
+  let sqlstr = `select distinct concat (concat(mp.nombres,' ', mp.apellido),'(', mpc.email,')') as contacto from negocio.sga_comisiones com
 inner join negocio.sga_docentes_comision sdc on sdc.comision = com.comision
 inner join negocio.sga_docentes sd on sd.docente=sdc.docente
 inner join negocio.sga_docentes_resp sdr on sdr.docente=sd.docente
@@ -1426,20 +1450,20 @@ inner join negocio.mdp_personas_contactos mpc on mpc.persona=mp.persona
 where mpc.contacto_tipo ='MP' and sdr.responsabilidad  in (1,2,3,5,7,101) and com.comision =$1
 order by contacto`
 
-try {
-  const result = await coneccionDB.query(sqlstr,[comision]);
-  //console.log(comision,result.rows)
-  if (result.rowCount === 1) {
-    return result.rows[0].contacto;
-} else if (result.rowCount > 1) {
-    // Unir los nombres en un solo string separados por comas
-    return result.rows.map(row => row.contacto).join(', ');
-} else {
-    return 'Sin datos';
-}
-} catch (error) {
-  console.log(error)
-}
+  try {
+    const result = await coneccionDB.query(sqlstr, [comision]);
+    //console.log(comision,result.rows)
+    if (result.rowCount === 1) {
+      return result.rows[0].contacto;
+    } else if (result.rowCount > 1) {
+      // Unir los nombres en un solo string separados por comas
+      return result.rows.map(row => row.contacto).join(', ');
+    } else {
+      return 'Sin datos';
+    }
+  } catch (error) {
+    console.log(error)
+  }
 
 
 }
@@ -1447,7 +1471,7 @@ try {
 //indices por comisiones 
 export const indicescomisionessede = async (req, res) => {
   const { anio, sede } = req.params;
-  
+
   let codsede = '';
 
   if (sede === '1') {
@@ -1475,7 +1499,7 @@ export const indicescomisionessede = async (req, res) => {
     const result = await coneccionDB.query(strQry, [anio, codsede]);
 
     // 🔴 IMPORTANTE: Usamos `await` para esperar la ejecución de tratarComisiones()
-    const resultadocomi = await tratarComisiones(result.rows, anio,sede);
+    const resultadocomi = await tratarComisiones(result.rows, anio, sede);
 
     res.send(resultadocomi);
   } catch (error) {
@@ -1495,14 +1519,14 @@ export const indicescomisionessede = async (req, res) => {
 /////borrado de tablas indices
 
 
-export const deleteTablesIndices =async(req, res)=>{
+export const deleteTablesIndices = async (req, res) => {
 
   try {
     const resu1 = await coneccionDB.query('TRUNCATE fce_per.dash_actividad_resultados')
     const resu2 = await coneccionDB.query('TRUNCATE fce_per.dash_indices_total')
-   // console.log(resu1)
+    // console.log(resu1)
     //console.log(resu2)
-    res.send({message:'ok'})
+    res.send({ message: 'ok' })
 
   } catch (error) {
     console.log(error)

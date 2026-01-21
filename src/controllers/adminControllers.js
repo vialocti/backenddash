@@ -6,7 +6,7 @@ export const getAprobadasHistoricoPrimer = async (req, res) => {
     try {
         
         const result= await coneccionDB.query(`
-            SELECT * FROM fce_per.dash_aprobadas_anio           
+            SELECT * FROM fce_per.dash_aprobadas_anio  order by anio desc       
         `);
         res.json(result.rows);
     } catch (error) {

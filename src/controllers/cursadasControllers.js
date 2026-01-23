@@ -282,6 +282,16 @@ export const getActividadCantiInscriptosC = async (req, res) => {
 export const getActividadCantiInscriptosPorSede = async (req, res) => {
 
   const { anio } = req.params
+  let anioE = anio
+  //console.log(anio)
+  if (parseInt(anio) === 0) {
+    anioE = new Date().getFullYear()
+    let fecha = new Date()
+    if (fecha < new Date(`${anioE}-04-01`)) {
+      anioE = anioE - 1
+    }
+
+  }
   let sqlstr = `select sc.ubicacion,sa.propuesta,sa.plan_version , sic.estado, count(sic.alumno)  from negocio.sga_insc_cursada sic
 	inner join negocio.sga_alumnos sa on sa.alumno = sic.alumno 
     inner join negocio.sga_comisiones sc on sc.comision=sic.comision
@@ -289,7 +299,7 @@ export const getActividadCantiInscriptosPorSede = async (req, res) => {
     inner join negocio.sga_periodos_lectivos spl on spl.periodo_lectivo =sc.periodo_lectivo
     inner join negocio.sga_periodos sp on sp.periodo =spl.periodo
     inner join negocio.sga_periodos_genericos spgt on spgt.periodo_generico  = sp.periodo_generico 
-    where sp.anio_academico =${anio} and not sc.nombre like'V%'
+    where sp.anio_academico =${anioE} and not sc.nombre like'V%'
     group by sc.ubicacion, sa.propuesta,sa.plan_version, sic.estado
     order by sc.ubicacion, sa.propuesta,sa.plan_version, sic.estado 
 `

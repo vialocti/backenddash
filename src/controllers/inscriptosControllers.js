@@ -22,7 +22,7 @@ const countInscriptos = async (anio) => {
         where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) and not tipo_ingreso is null group by tipo_ingreso 
       `
         let resultado = await coneccionDB.query(sqlqy)
-        
+
         return resultado.rows
 
     } catch (error) {
@@ -71,9 +71,20 @@ export const getInscriptosTanios = async (req, res) => {
 
 export const getInscriptosSedeAnio = async (req, res) => {
     const { anio } = req.params
+    let anioE = anio
+    //console.log(anio)
+    if (parseInt(anio) === 1) {
+        anioE = new Date().getFullYear()
+        let fecha = new Date()
+        if (fecha < new Date(`${anioE}-04-01`)) {
+            anioE = anioE
+        } else {
+            anioE = anioE + 1
+        }
+    }
 
     const strq = `SELECT CASE ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede ,
-        count(*)  FROM negocio.sga_propuestas_aspira where anio_academico=${anio} and propuesta in (1,2,3,6,7,8) Group by ubicacion order by ubicacion`
+        count(*)  FROM negocio.sga_propuestas_aspira where anio_academico=${anioE} and propuesta in (1,2,3,6,7,8) Group by ubicacion order by ubicacion`
     try {
         const resu = await coneccionDB.query(strq)
         res.send(resu.rows)
@@ -86,10 +97,21 @@ export const getInscriptosSedeAnio = async (req, res) => {
 export const getInscriptosPeriodos = async (req, res) => {
 
     const { anio } = req.params
+    let anioE = anio
+    //console.log(anio)
+    if (parseInt(anio) === 1) {
+        anioE = new Date().getFullYear()
+        let fecha = new Date()
+        if (fecha < new Date(`${anioE}-04-01`)) {
+            anioE = anioE
+        } else {
+            anioE = anioE + 1
+        }
+    }
 
     const strq = `select spa.periodo_insc, to_char(pif.fecha_inicio,'dd-mm-yyyy') as fechai, to_char(pif.fecha_fin,'dd-mm-yyyy')as fechaf , count(spa.periodo_insc)  as canti  from negocio.sga_propuestas_aspira spa  
     inner join negocio.sga_periodos_inscripcion_fechas pif on pif.periodo_insc=spa.periodo_insc
-    where anio_academico =${anio}
+    where anio_academico =${anioE}
     group by spa.periodo_insc,pif.fecha_inicio,pif.fecha_fin order by pif.fecha_inicio`
     try {
         const resu = await coneccionDB.query(strq)

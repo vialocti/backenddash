@@ -7,7 +7,7 @@ const router = Router();
 router.get('/traerReinscriptos/:anio', getReinscriptos)
 router.post('/grabarReinscripto', insertAlumnoInfo)
 router.get('/procReinscriptos/:anio', processReinscriptos)//reinscriptos año para alumnosinfo
-router.get('/procinfoOne/:tp/:modo', processInfo_One)//proceso de carga y actualizacion informacion alumnosInfo
+router.get('/procinfoOne/:tipoO/:modo', processInfo_One)//proceso de carga y actualizacion informacion alumnosInfo
 router.get('/aprobadasanio/:tipoO', calcularAproAnio) //calcular aprobadas anio
 router.get('/calculoanioplan19/:tipo/:tipoO', aniocursada19) //calculo anio plan 19
 router.get('/calculoanioplan98/:tipo/:tipoO', aniocursada98) //calculo anio plan 98
@@ -18,5 +18,7 @@ router.get('/traerdatosalu', traerDatosAlumnosInfo)
 router.get('/controlCalidad', controlCalidadAluinfo)
 router.get('/calcularporcentaje/:tipoO', controlPorcentaje)
 router.get('/controlMatricula', controlMatricula)
+
+
 
 export default router;

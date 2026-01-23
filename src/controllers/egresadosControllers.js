@@ -137,7 +137,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
 
     const { anio, lapso } = req.params
     let anioE = anio
-    console.log(anio)
+    //console.log(anio)
     if (parseInt(anio) === 0) {
         anioE = new Date().getFullYear()
         let fecha = new Date()
@@ -162,8 +162,8 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
 
     }
 
-    console.log(fecha_i)
-    console.log(fecha_f)
+    //console.log(fecha_i)
+    //console.log(fecha_f)
 
     let sql = `select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
     count(sa.ubicacion)

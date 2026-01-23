@@ -282,10 +282,10 @@ async function obtenerDatosAlumno(row, modo = 'I') {
  * Función principal que obtiene los registros de la tabla fce_per.alumnos_info,
  * calcula datos adicionales y actualiza la misma tabla.
  */
-async function infoOne(tp) {
+async function infoOne(tipoO) {
 
   try {
-    let sqlwhere = tp === 'P' ? `WHERE anio_ingreso_pro IS NULL` : '';
+    let sqlwhere = tipoO === 'P' ? `WHERE anio_ingreso_pro IS NULL` : '';
     const sqlSelect = `SELECT alumno, persona, ubicacion, propuesta, legajo, plan FROM fce_per.alumnos_info ${sqlwhere}`;
 
     const result = await coneccionDB.query(sqlSelect);
@@ -656,14 +656,14 @@ async function traerRegulares(alumno, plan, anio) {
  * Controlador para exponer el endpoint que ejecuta la función infoOne.
  */
 export const processInfo_One = async (req, res) => {
-  const { tp, modo } = req.params
+  const { tipoO, modo } = req.params
   //console.log(`Procesando infoOne con tipo: ${tp} y etapa: ${etapa}`);
   let result;
   try {
     if (modo === 'A') {
       result = await infoOneAct();
     } else {
-      result = await infoOne(tp);
+      result = await infoOne(tipoO);
     }
     console.log(result);
     res.json(result);
@@ -1641,3 +1641,5 @@ async function infoOneparcial(tp) {
 
   }
 }
+
+

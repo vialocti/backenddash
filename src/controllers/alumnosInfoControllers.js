@@ -426,7 +426,7 @@ async function materiasAprobadas(alumno, anio) {
     await coneccionDB.query('SET search_path TO negocio');
 
     if (anio === 0) {
-      sql = "select count(*) as canti from negocio.vw_hist_academica vha where resultado='A' and alumno=$1 and fecha<'2026-04-01'";
+      sql = "select count(*) as canti from f_certificado_actividades_fce($1 ,'T','T','A' ) where resultado_descripcion in ('Aprobado', 'Promocionado')";
       params = [alumno];
     } else {
       sql = `select count(*) as canti from negocio.vw_hist_academica vha where resultado = 'A' and alumno=$1 and anio_academico < $2`
@@ -504,11 +504,9 @@ async function materiasReprobadas(alumno, anio) {
     if (anio === 0) {
       await coneccionDB.query('SET search_path TO negocio');
 
-      sql = `
-        SELECT COUNT(*) AS canti 
-        FROM negocio.f_certificado_actividades($1, 'T', 'T', 'A')
-        WHERE resultado='R'
-      `;
+      sql = "select count(*) as canti from f_certificado_actividades_fce($1 ,'T','T','A' ) where resultado_descripcion in ('Reprobado')";
+
+      
       params = [alumno];
     } else {
       sql = `
@@ -549,21 +547,12 @@ async function calcularPromedio(alumno, tipo, anio) {
     }
 
     if (tipo === 'C') {
-      sql = `
-        SELECT AVG(CAST(nota AS INTEGER)) AS promedio
-        FROM negocio.vw_hist_academica vha
-        WHERE vha.alumno = $1
-          AND vha.resultado IN ('A', 'R')
-          AND vha.fecha < $2        
-          AND nota ~ '^[0-9]+$'`;
+        sql =`select  AVG(CAST(nota AS INTEGER)) AS promedio from f_certificado_actividades_fce($1 ,'T','T','A' )
+       where resultado_descripcion in ('Aprobado', 'Promocionado', 'Reprobado') and fecha < $2 and nota ~ '^[0-9]+$'`;
     } else if (tipo === 'S') {
-      sql = `
-        SELECT AVG(CAST(nota AS INTEGER)) AS promedio
-        FROM negocio.vw_hist_academica vha
-        WHERE vha.alumno = $1
-          AND vha.resultado IN ('A')
-          AND vha.fecha < $2        
-          AND nota ~ '^[0-9]+$'`;
+      sql =`select  AVG(CAST(nota AS INTEGER)) AS promedio from f_certificado_actividades_fce($1 ,'T','T','A' )
+       where resultado_descripcion in ('Aprobado', 'Promocionado') and fecha < $2 and nota ~ '^[0-9]+$'`;
+   
     } else {
       throw new Error("Tipo inválido. Debe ser 'C' o 'S'.");
     }
@@ -645,7 +634,17 @@ async function traerRegulares(alumno, plan, anio) {
                  AND resultado = 'A' 
                  AND actividad_codigo LIKE '04%'`;
         params = [alumno];
-      } else {
+         
+      } 
+        else if(plan === 18 || plan === 19 || plan === 20) {
+        sql = `SELECT DISTINCT actividad_codigo 
+                FROM vw_regularidades
+                WHERE alumno = $1
+                  AND resultado = 'A'
+                  AND actividad_codigo LIKE '5%'`;
+        params = [alumno];
+      
+      }else{
         sql = `SELECT DISTINCT actividad_codigo 
                FROM vw_regularidades 
                WHERE alumno = $1 
@@ -702,11 +701,11 @@ export const setCompletadoProp = async (req, res) => {
 
   // Lógica de propuesta y plan
   if (propuesta === 2) {
-    matplanproT = (plan === 6) ? 37 : 46;
+    matplanproT = (plan === 6) ? 37 : plan === 13 ? 42 : 30;
   }
 
   if (propuesta === 3) {
-    matplanproT = (plan === 7) ? 36 : 42;
+    matplanproT = (plan === 7) ? 36 : plan===14 ? 42 : 32;
   }
 
   if (propuesta === 1) {
@@ -714,7 +713,7 @@ export const setCompletadoProp = async (req, res) => {
   }
 
   if (propuesta === 8) {
-    matplanproT = 46;
+    matplanproT===12 ? 46 :32;
   }
 
   if (propuesta === 6) {
@@ -722,7 +721,7 @@ export const setCompletadoProp = async (req, res) => {
   }
 
   if (propuesta === 7) {
-    matplanproT = (plan === 17) ? 40 : 36;
+    matplanproT = (plan === 11) ? 36 : 40;
   }
 
   // Calcular porcentaje
@@ -772,7 +771,7 @@ export const calcularAproAnio = async (req, res) => {
       SELECT ali.alumno, ali.plan
       FROM fce_per.alumnos_info AS ali
       INNER JOIN negocio.sga_alumnos AS alu ON alu.alumno = ali.alumno
-      WHERE plan IN (12,13,14,17) ${whereext}
+      WHERE plan IN (12,13,14,17,18,19,20,24) ${whereext}
     `;
     const result = await coneccionDB.query(sql);
 
@@ -812,9 +811,12 @@ async function verMatAnio(alumno, plan, fecha) {
   let condicionActividad = '';
   if (plan === 17) {
     condicionActividad = `actividad_codigo LIKE '02%'`
-  } else {
+  } else if(plan === 12 || plan === 13 || plan === 14) {
     condicionActividad = `actividad_codigo LIKE '04%'`
+  } else {
+    condicionActividad = `actividad_codigo LIKE '5%'`
   }
+
   try {
 
     // Establecer el search_path a negocio
@@ -866,8 +868,10 @@ async function verMatAnioReg(alumno, plan, fecha) {
   let condicionActividad = '';
   if (plan === 17) {
     condicionActividad = `actividad_codigo LIKE '02%'`
-  } else {
+  } else if (plan === 12 || plan === 13 || plan === 14) {
     condicionActividad = `actividad_codigo LIKE '04%'`
+  } else {
+    condicionActividad = `actividad_codigo LIKE '5%'`
   }
   try {
 
@@ -1232,7 +1236,7 @@ export const calculoVelocidad = async (req, res) => {
     : ""
 
   const sqlstr = `
-    SELECT alumno, anio_ingreso_pro, propuesta, plan_version, aprobadas, regularesap 
+    SELECT alumno, anio_ingreso_pro, propuesta, plan, plan_version, aprobadas, regularesap 
     FROM fce_per.alumnos_info ${whereext}
   `;
 
@@ -1245,7 +1249,7 @@ export const calculoVelocidad = async (req, res) => {
     console.log("Número de registros:", rows.length);
 
     for (const row of rows) {
-      let bimestres = [75, 79, 57, 80].includes(row.plan_version) ? 16 : 20;
+      let bimestres = [11,17,24,18,19,20].includes(row.plan) ? 16 : 20;
       //console.log(row.alumno,anio,row.anio_ingreso_fac,epoca)
       let nrobimestres = (anio - row.anio_ingreso_pro) * 4 + parseInt(epoca);
 
@@ -1254,9 +1258,10 @@ export const calculoVelocidad = async (req, res) => {
 
       let idealExamen = await traerExamenideal(nrobimestres, row.propuesta, row.plan_version);
       let idealCursadas = await traerRegularideal(nrobimestres, row.propuesta, row.plan_version);
-      if(row.alumno === 41649){
-        console.log(nrobimestres,idealExamen, idealCursadas, row.propuesta, row.plan_version,aprobadas, regulares);
-      }
+   
+   //   if(row.alumno === 41649){
+   //     console.log(nrobimestres,idealExamen, idealCursadas, row.propuesta, row.plan_version,aprobadas, regulares);
+   //   }
       
       
       let calculotiempo;
@@ -1284,9 +1289,9 @@ export const calculoVelocidad = async (req, res) => {
       } else {
         calculotiempo = 100
       }
-      if(row.alumno === 41649){
-        console.log(`Alumno: ${row.alumno} | Aprobadas: ${aprobadas} | Regulares: ${regulares} | Ideal Examen: ${idealExamen} | Ideal Cursadas: ${idealCursadas} | Cálculo Tiempo: ${calculotiempo}`);
-      }
+     // if(row.alumno === 41649){
+     //   console.log(`Alumno: ${row.alumno} | Aprobadas: ${aprobadas} | Regulares: ${regulares} | Ideal Examen: ${idealExamen} | Ideal Cursadas: ${idealCursadas} | Cálculo Tiempo: ${calculotiempo}`);
+     // }
 
       const sqlu = `
         UPDATE fce_per.alumnos_info 

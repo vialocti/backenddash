@@ -1,4 +1,4 @@
-import { cantidadEresadosaniosPropuesta, getCantidadEgreSedeCarreraAnio, getCantidadEgreSedesAnio, getEgresadoSedeCarreraAnio, getEgresadosPromedios, getListadoEgreSedeCarreraAnio, obtenerCertificadosPorAnio } from '../controllers/egresadosControllers.js'
+import { buscarPersonaEgresado, cantidadEresadosaniosPropuesta, getCantidadEgreSedeCarreraAnio, getCantidadEgreSedesAnio, getEgresadoSedeCarreraAnio, getEgresadosPromedios, getListadoEgreSedeCarreraAnio, obtenerCertificadosPorAnio } from '../controllers/egresadosControllers.js'
 
 import { Router } from 'express'
 
@@ -12,4 +12,6 @@ router.get('/egrepromcaranio/:anio/:car/:lapso/:ficola/:ffcola', getEgresadosPro
 router.get('/egreenteanios/:anioI/:anioF/:lapso', cantidadEresadosaniosPropuesta)
 
 router.get('/egresadosaniosfecha', obtenerCertificadosPorAnio)
+
+router.get('/buscar-egresado-padron', buscarPersonaEgresado)
 export default router

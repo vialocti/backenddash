@@ -55,7 +55,7 @@ router.get('/materiascomision/:anio/:sede', getListMateriasComision) //materias 
 router.get('/cantiInsccomisiones/:anio', getComisionesCantiInscriptos)
 router.get('/cantiinscriptosComiplan/:anio', getComisionesCantiInscriptosPlan)
 router.get('/cantiInscActividad/:anio/:sede', getActividadCantiInscriptos)
-router.get('/cantiInscActividadComi/:anio/:sede', getActividadCantiInscriptosC)
+router.get('/cantiInscActividadComi/:anio', getActividadCantiInscriptosC)
 router.get('/cantiInscActividadComi/:anio/:sede/:actividad', getActividadComisionCantiInscriptos)
 router.get('/detalleactasCur/:anio/:origen/:periodo', resultadoActaDetallesporPeriodo)
 router.get('/detalleporcomision/:anio/:ncomision', resultadoActaDetallesporComision)

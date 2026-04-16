@@ -26,7 +26,7 @@ export const getEgresadoSedeCarreraAnio = async (req, res) => {
      CASE sa.propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
     count(sa.propuesta) as canti,avg(promedio) as pro,avg(promedio_sin_aplazos) as prosa  from negocio.sga_certificados_otorg sco `
     let sql_I = " inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno"
-    let sql_w = ` where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}'`
+    let sql_w = ` where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}'  and certificado  in (3,4,5,6,7,9)`
     let sql_g = " group by sa.ubicacion ,sa.propuesta order by sa.ubicacion,sa.propuesta"
 
 
@@ -250,7 +250,7 @@ export const getEgresadosPromedios = async (req, res) => {
     try {
         const wer = await coneccionDB.query('set search_path=negocio')
         const resp = await coneccionDB.query(sql)
-        //console.log(resp.rows)
+        
         res.send(resp.rows)
     } catch (error) {
         console.log(error)
@@ -399,4 +399,143 @@ export const obtenerCertificadosPorAnio = async (req, res) => {
     }
 }
 
+
+// controllers/egresadoPadron
+
+
+export const buscarPersonaEgresadoDL = async (req, res) => {
+  const { documento, legajo } = req.query;
+
+  if (!documento && !legajo) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Debés proporcionar documento o legajo.',
+    });
+  }
+
+  try {
+    const conditions = [];
+    const values = [];
+    let idx = 1;
+
+    if (documento) {
+      conditions.push(`documento = $${idx++}`);
+      values.push(documento);
+    }
+
+    if (legajo) {
+      conditions.push(`legajo = $${idx++}`);
+      values.push(legajo);
+    }
+
+    const query = `
+      SELECT
+        nroorden,
+        nombre,
+        documento,
+        legajo,
+        unidad_academica,
+        claustro,
+        sede
+      FROM fce_per.egresados_padron
+      WHERE ${conditions.join(' OR ')}
+      ORDER BY nombre ASC
+    `;
+
+    const { rows } = await coneccionDB.query(query, values);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        status: 'not_found',
+        message: 'No se encontró ninguna persona con los datos ingresados.',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      total: rows.length,
+      data: rows,
+    });
+
+  } catch (error) {
+    console.error('Error en buscarPersona:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Error interno al buscar persona.',
+      detail: error.message,
+    });
+  }
+};
+
+
+// controllers/personaController.js
+
+
+
+export const buscarPersonaEgresado = async (req, res) => {
+  const { documento, legajo, nombre } = req.query;
+
+  if (!documento && !legajo && !nombre) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Debés proporcionar documento, legajo o nombre.',
+    });
+  }
+
+  try {
+    let query, values;
+
+    if (documento) {
+      query = `
+        SELECT nroorden, nombre, documento, legajo, unidad_academica, claustro, sede
+        FROM fce_per.egresados_padron
+        WHERE documento = $1
+        LIMIT 1
+      `;
+      values = [documento];
+
+    } else if (legajo) {
+      query = `
+        SELECT nroorden, nombre, documento, legajo, unidad_academica, claustro, sede
+        FROM fce_per.egresados_padron
+        WHERE legajo = $1
+        LIMIT 1
+      `;
+      values = [legajo];
+
+    } else {
+      query = `
+        SELECT nroorden, nombre, documento, legajo, unidad_academica, claustro, sede
+        FROM fce_per.egresados_padron
+        WHERE nombre ILIKE $1
+        ORDER BY nombre ASC
+        LIMIT 50
+      `;
+      values = [`%${nombre}%`];
+    }
+
+    const { rows } = await coneccionDB.query(query, values);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        status: 'not_found',
+        message: 'No se encontraron resultados.',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      total: rows.length,
+      data: rows,
+    });
+
+  } catch (error) {
+    console.error('Error en buscarPersona:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Error interno al buscar persona.',
+      detail: error.message,
+    });
+  }
+};
 

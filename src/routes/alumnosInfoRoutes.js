@@ -1,4 +1,4 @@
-import { aniocursada19, aniocursada98, calcularAproAnio, calculoVelocidad, controlCalidadAluinfo, controlMatricula, controlPorcentaje, getReinscriptos, insertAlumnoInfo, processInfo_One, processReinscriptos, traerDatosAlumnosInfo } from "../controllers/alumnosInfoControllers.js";
+import { aniocursada19, aniocursada98, calcularAproAnio, calculoVelocidad, controlCalidadAluinfo, controlMatricula, controlPorcentaje, getEquivalenciasAlumno, getReinscriptos, insertAlumnoInfo, processInfo_One, processReinscriptos, traerDatosAlumnosInfo } from "../controllers/alumnosInfoControllers.js";
 
 import { Router } from "express";
 
@@ -18,7 +18,7 @@ router.get('/traerdatosalu', traerDatosAlumnosInfo)
 router.get('/controlCalidad', controlCalidadAluinfo)
 router.get('/calcularporcentaje/:tipoO', controlPorcentaje)
 router.get('/controlMatricula', controlMatricula)
-
+router.get('/equialumnos/:alumnoId', getEquivalenciasAlumno)
 
 
 export default router;

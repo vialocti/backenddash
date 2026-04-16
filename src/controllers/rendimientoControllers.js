@@ -108,6 +108,7 @@ export const traerCantidadInscriptosTotalfceper = async (req, res) => {
 /////2da parte procesar datos
 
 // Este es el nuevo procedimiento grabarIndiceTotal que ahora incluye 'propuesta'
+/*
 const grabarIndiceTotal = async (registro) => {
   const {
     anio,
@@ -137,6 +138,78 @@ const grabarIndiceTotal = async (registro) => {
   } catch (error) {
     console.log(error);
     return `Error servicio para la propuesta ${propuesta}: posible clave duplicada`;
+  }
+};
+*/
+const grabarIndiceTotal = async (registro) => {
+  const {
+    anio,
+    sede,
+    propuesta,
+    periodo,
+    totai,
+    totalr,
+    totallb,
+    totallibas,
+    tpromo,
+    taprob1,
+    taprob2,
+    indicecur,
+    indiceccorto,
+    indiceclargo
+  } = registro;
+
+  try {
+    const sqlUpsert = `
+      INSERT INTO fce_per.dash_indices_total (
+        anio_academico,
+        sede,
+        propuesta,
+        periodo,
+        "totalInscriptos",
+        "totalRegulares",
+        "totalDesaprobados",
+        "totalAusentes",
+        "totalPromocionados",
+        totalaprobadascc,
+        totalaprobadascl,
+        promedioindicecursada,
+        promedioindicecorto,
+        promedioindicelargo
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ON CONFLICT (anio_academico, sede, propuesta)
+      DO UPDATE SET
+        periodo              = EXCLUDED.periodo,
+        "totalInscriptos"    = EXCLUDED."totalInscriptos",
+        "totalRegulares"     = EXCLUDED."totalRegulares",
+        "totalDesaprobados"  = EXCLUDED."totalDesaprobados",
+        "totalAusentes"      = EXCLUDED."totalAusentes",
+        "totalPromocionados" = EXCLUDED."totalPromocionados",
+        totalaprobadascc     = EXCLUDED.totalaprobadascc,
+        totalaprobadascl     = EXCLUDED.totalaprobadascl,
+        promedioindicecursada = EXCLUDED.promedioindicecursada,
+        promedioindicecorto  = EXCLUDED.promedioindicecorto,
+        promedioindicelargo  = EXCLUDED.promedioindicelargo
+    `;
+
+    const values = [
+      anio, sede, propuesta, periodo,
+      totai, totalr, totallb, totallibas, tpromo,
+      taprob1, taprob2,
+      indicecur, indiceccorto, indiceclargo
+    ];
+
+    const result = await coneccionDB.query(sqlUpsert, values);
+
+    if (result.rowCount === 1) {
+      // rowCount = 1 tanto en INSERT como en UPDATE exitoso
+      return `Propuesta ${propuesta}: registro guardado/actualizado correctamente`;
+    }
+
+  } catch (error) {
+    console.log(error);
+    return `Error en propuesta ${propuesta}: ${error.message}`;
   }
 };
 
@@ -613,7 +686,10 @@ export const exportComisionesCSV = async (req, res) => {
     66: 'LA',
     72: 'LA',
     74: 'LE',
-    76: 'LE'
+    76: 'LE',
+    83: 'LA',
+    84: 'LE',
+    85: 'CP'
   };
 
 

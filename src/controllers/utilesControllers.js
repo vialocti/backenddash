@@ -916,6 +916,28 @@ where spv.estado='V'  and propuesta=$1 and sep.nombre =$2`
 
 }
 
+
+//obtener anio_de cursada de una actividad por codigo de materia
+
+const obtenerAniocursadaactividadcod = async (codmat) => {
+
+    let sqlstr = `select distinct se.codigo, sep.anio_de_cursada  from negocio.sga_elementos se
+   inner join negocio.sga_elementos_revision ser on ser.elemento = se.elemento 
+inner join negocio.sga_elementos_plan sep on sep.elemento_revision  = ser.elemento_revision 
+ where se.codigo= $1 and not sep.anio_de_cursada isnull`
+ 
+ try {
+   const resu = await coneccionDB.query(sqlstr, [codmat]);
+   
+   return resu.rows
+
+ } catch (error) {
+   console.error('Error en la consulta:', error);
+   return ({ message: 'Ocurrió un error en el servidor.' });
+ }    
+
+}
+
 const obtenerIngresantesCarreraSede = async (anio, propuesta) => {
 
 
@@ -1339,7 +1361,7 @@ const tratarComisiones = async (comisiones, anio, sede) => {
 
   for (const element of comisiones) {
     let resultados = await traerresultadocomision(element.comision);
-    //console.log(resultados)
+    console.log(element)
     // Inicializar objeto de datos
     let dato = {
       anio: anio,
@@ -1347,7 +1369,7 @@ const tratarComisiones = async (comisiones, anio, sede) => {
       comision: element.comision,
       codmat: element.codmat,
       actividad: await traerNombreActividad(element.codmat),
-      propuesta: await traerNombrePropuesta(element.codmat),
+      propuesta: await traerNombrePropuesta(element.propuesta),
       nombre: element.nombre,
       periodo: resultados.length > 0 ? resultados[0].periodo : '',
       regulares: 0,
@@ -1414,7 +1436,20 @@ const traerNombreActividad = async (codigomat) => {
 
 // propuesta
 const traerNombrePropuesta = async (codigomat) => {
-
+ 
+  console.log(codigomat)
+  if (codigomat === '2') {
+    return 'LA'
+  } else if (codigomat ==='3') {
+    return 'LE'
+  } else if (codigomat === '7') {
+    return 'LLO'
+  } else if (codigomat === '8') {
+    return 'CP'
+  } else {
+    return 'Sin datos'
+  }
+  /*
   let sqlstr = ` select distinct sp2.nombre  from negocio.sga_elementos_plan sep
 	 inner join negocio.sga_planes_versiones spv on spv.plan_version = sep.plan_version
 	 inner join negocio.sga_planes sp on sp.plan=spv.plan
@@ -1436,6 +1471,7 @@ const traerNombrePropuesta = async (codigomat) => {
   } catch (error) {
     console.log(error)
   }
+    */
 }
 
 
@@ -1469,7 +1505,7 @@ order by contacto`
 }
 
 //indices por comisiones 
-export const indicescomisionessede = async (req, res) => {
+export const indicescomisionessede_old = async (req, res) => {
   const { anio, sede } = req.params;
 
   let codsede = '';
@@ -1532,3 +1568,132 @@ export const deleteTablesIndices = async (req, res) => {
     console.log(error)
   }
 }
+
+
+
+export const buscarMesasSinCerrar = async (req, res) => {
+  const query = `
+    SELECT 
+      sa.nro_acta, 
+      sa.fecha_generacion, 
+      sa.fecha_cierre, 
+      slm.fecha as fecha_mesa, 
+      sme.anio_academico, 
+      sme.nombre as mesa_nombre, 
+      se.codigo as actividad_codigo, 
+      se.nombre as actividad_nombre
+    FROM negocio.sga_actas sa 
+    INNER JOIN negocio.sga_llamados_mesa slm ON slm.llamado_mesa = sa.llamado_mesa 
+    INNER JOIN negocio.sga_mesas_examen sme ON sme.mesa_examen = slm.mesa_examen 
+    INNER JOIN negocio.sga_elementos se ON se.elemento = sme.elemento 
+    WHERE sa.estado = 'A' 
+      AND sa.origen = 'E'
+    ORDER BY sa.fecha_generacion DESC;
+  `;
+
+  try {
+    const result = await coneccionDB.query(query);
+    
+    // Agregamos lógica de negocio simple: calcular días de demora
+    const dataProcesada = result.rows.map(row => {
+      const hoy = new Date();
+      const generacion = new Date(row.fecha_mesa);
+      const diffTime = Math.abs(hoy - generacion);
+      const diasDemora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Cálculo de días de demora
+   
+
+      // Lógica de Niveles de Alerta
+      let nivelAlerta = 'NORMAL';
+      if (diasDemora > 21) {
+        nivelAlerta = 'CRITICO';
+      } else if (diasDemora > 15) {
+        nivelAlerta = 'EXCESIVA';
+      } else if (diasDemora > 7) {
+        nivelAlerta = 'MODERADA';
+      }
+
+      return {
+        ...row,
+        dias_demora: diasDemora,
+        nivel_alerta: nivelAlerta
+      };
+    });
+
+    res.json(dataProcesada);
+  } catch (err) {
+    console.error('Error ejecutando query de mesas:', err.stack);
+    res.status(500).json({ error: 'Error en el servidor al consultar actas' });
+  }
+};
+
+
+
+// 
+//nuevo script para mostrar actividades y resultados por comision y contacto docente
+//
+
+export const indicescomisionessede = async (req, res) => {
+  const { anio, sede } = req.params;
+
+  let codsede = '';
+  if (sede === 'O') {
+    codsede = `'1', '2', '4'`;
+  } else {
+    codsede = sede;
+  }
+
+  let strQry = `
+    SELECT * FROM fce_per.dash_actividad_resultados WHERE anio_academico = $1
+  `;
+
+  if(sede !== 'O') {
+    strQry = `
+      SELECT * FROM fce_per.dash_actividad_resultados WHERE anio_academico = $1 AND sede IN(1,2,4)
+    `;
+  }
+  try {
+    const result = await coneccionDB.query(strQry, [anio]);
+
+    // Agregamos contacto a cada fila en paralelo
+    const resultadocomi = await Promise.all(
+      result.rows.map(async (element) => ({
+        ...element,
+        contacto: await traercontacto(element.comision),
+      }))
+    );
+    //console.log(resultadocomi)
+    res.send(resultadocomi);
+  } catch (error) {
+    console.error('Error en obtenerAlumnos:', error);
+    res.status(500).send({ error: "Error en la consulta de comisiones" });
+  }
+};
+
+
+//traer numero de ingresantes anio propuestas CP, LA, LE y LLO sedes mza,sr y este
+
+
+//seter anio de cursada de actividad en dahs_actividad_resultados
+
+export const setearAniocursadaActividad = async (req, res) => {
+  
+  const querySelect = `SELECT id, codmat FROM fce_per.dash_actividad_resultados where anio_academico=2025`;
+  const queryUpdate = `UPDATE fce_per.dash_actividad_resultados SET anioactividad = $1 WHERE id = $2`;
+  try {
+    const resu = await coneccionDB.query(querySelect);
+    for (const row of resu.rows) {
+      const anicur = await obtenerAniocursadaactividadcod(row.codmat);
+      if (anicur.length > 0) {
+        await coneccionDB.query(queryUpdate, [anicur[0].anio_de_cursada, row.id]);
+      }
+    }
+    res.send({ message: 'Años de cursada actualizados correctamente' });
+  } catch (error) {
+    console.error('Error en setearAniocursadaActividad:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+
+}
+
+  

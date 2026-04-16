@@ -37,8 +37,8 @@ export const getInscriptosTotal = async (req, res) => {
     const { anio } = req.params
     try {
         const resu = await countInscriptos(anio)
-        //console.log(resu)
-        res.send(resu.rows[0])
+        
+        res.send(resu)
     } catch (error) {
         console.log(error)
     }

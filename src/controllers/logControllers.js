@@ -4,16 +4,16 @@ import coneccionDB from "../database";
 
 
 export const logProceso = async (req, res) => {
-    const { anio, operacion, paso, estado, stats, error } = req.body;
+    const { anio, modo, operacion, paso, estado, stats, error } = req.body;
     console.log(req.body);
     const query = `
-    INSERT INTO fce_per.proceso_logs (anio, operacion, paso, estado, stats, error_detalle)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO fce_per.proceso_logs (anio, modo, operacion, paso, estado, stats, error_detalle)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id;
   `;
 
     try {
-        const { rows } = await coneccionDB.query(query, [anio, operacion, paso, estado, stats, error]);
+        const { rows } = await coneccionDB.query(query, [anio, modo, operacion, paso, estado, stats, error]);
         res.status(200).json({ id_log: rows[0].id });
     } catch (err) {
         res.status(500).json({ error: err.message });

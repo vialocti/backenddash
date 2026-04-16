@@ -23,7 +23,8 @@ export const getReinscriptos = async (req, res) => {
       alu.propuesta,
       alu.plan_version,
       spv.plan,
-      alu.calidad
+      alu.calidad,
+      fecha_reinscripcion
     FROM negocio.sga_reinscripciones AS rei
     INNER JOIN negocio.sga_alumnos AS alu ON alu.alumno = rei.alumno
     INNER JOIN negocio.sga_planes_versiones AS spv ON spv.plan_version = alu.plan_version
@@ -220,7 +221,7 @@ export const processReinscriptos = async (req, res) => {
 
   } catch (error) {
     await coneccionDB.query('ROLLBACK');
-    console.error('Error en Paso 1:', error);
+   // console.error('Error en Paso 1:', error);
     res.status(500).json({
       status: "error",
       message: 'Error al procesar reinscriptos.',
@@ -237,7 +238,7 @@ export const processReinscriptos = async (req, res) => {
 
 async function obtenerDatosAlumno(row, modo = 'I') {
   const promesas = [];
-  console.log(`Obteniendo datos para alumno: ${row.alumno} en modo: ${modo}`);
+ // console.log(`Obteniendo datos para alumno: ${row.alumno} en modo: ${modo}`);
   // Datos comunes a ambos modos
   promesas.push(materiasAprobadas(row.alumno, 0));     // 0
   promesas.push(materiasReprobadas(row.alumno, 0));    // 1
@@ -298,7 +299,7 @@ async function infoOne(tipoO) {
 
       for (const row of result.rows) {
         const datos = await obtenerDatosAlumno(row, 'I');
-        console.log(datos)
+        // console.log(datos)
         const sqlUpdate = `
       UPDATE fce_per.alumnos_info
       SET 
@@ -373,7 +374,7 @@ async function infoOneAct() {
       //console.log(`Procesando registro ${count} de ${result.rowCount} - Alumno: ${row.alumno}`);
       // Obtener solo los datos académicos (modo 'A')
       const datos = await obtenerDatosAlumno(row, 'A');
-      console.log(`Datos obtenidos para alumno ${row.alumno}:`, datos);
+      //console.log(`Datos obtenidos para alumno ${row.alumno}:`, datos);
       // Actualizar los campos correspondientes en alumnos_info
       const sqlUpdate = `
         UPDATE fce_per.alumnos_info
@@ -383,7 +384,7 @@ async function infoOneAct() {
           promedioca = $3,
           promediosa = $4,
           regularesap = $5
-        WHERE persona = $6 AND propuesta = $7
+        WHERE alumno = $6 AND propuesta = $7
       `;
       const values = [
         datos.matAprobadas,
@@ -391,13 +392,13 @@ async function infoOneAct() {
         datos.promedioCA,
         datos.promedioSA,
         datos.regulares,
-        row.persona,
+        row.alumno,
         row.propuesta
       ];
-
+     // console.log(`Actualizando alumno ${row.alumno} con valores:`, values);
       await coneccionDB.query(sqlUpdate, values);
     }
-
+  
     return {
       status: "success",
       step: "PASO_2",
@@ -425,7 +426,7 @@ async function materiasAprobadas(alumno, anio) {
     await coneccionDB.query('SET search_path TO negocio');
 
     if (anio === 0) {
-      sql = "SELECT COUNT(*) AS canti FROM negocio.f_certificado_actividades($1, 'A', 'T', 'A')";
+      sql = "select count(*) as canti from negocio.vw_hist_academica vha where resultado='A' and alumno=$1 and fecha<'2026-04-01'";
       params = [alumno];
     } else {
       sql = `select count(*) as canti from negocio.vw_hist_academica vha where resultado = 'A' and alumno=$1 and anio_academico < $2`
@@ -537,35 +538,53 @@ async function calcularPromedio(alumno, tipo, anio) {
     let fechaRef;
 
     if (anio === 0) {
-      // Usamos la fecha actual
       const hoy = new Date();
       const yyyy = hoy.getFullYear();
       const mm = String(hoy.getMonth() + 1).padStart(2, '0');
       const dd = String(hoy.getDate()).padStart(2, '0');
       fechaRef = `${yyyy}-${mm}-${dd}`;
     } else {
-      // Año específico -> fecha de corte 1 de abril del año siguiente
+      // Fecha de corte: 1 de abril del año siguiente
       fechaRef = `${anio + 1}-04-01`;
     }
 
     if (tipo === 'C') {
-      sql = "SELECT negocio.f_promedio_gral_con_aplazos($1, $2) AS prom";
+      sql = `
+        SELECT AVG(CAST(nota AS INTEGER)) AS promedio
+        FROM negocio.vw_hist_academica vha
+        WHERE vha.alumno = $1
+          AND vha.resultado IN ('A', 'R')
+          AND vha.fecha < $2        
+          AND nota ~ '^[0-9]+$'`;
     } else if (tipo === 'S') {
-      sql = "SELECT negocio.f_promedio_gral_sin_aplazos($1, $2) AS prom";
+      sql = `
+        SELECT AVG(CAST(nota AS INTEGER)) AS promedio
+        FROM negocio.vw_hist_academica vha
+        WHERE vha.alumno = $1
+          AND vha.resultado IN ('A')
+          AND vha.fecha < $2        
+          AND nota ~ '^[0-9]+$'`;
     } else {
       throw new Error("Tipo inválido. Debe ser 'C' o 'S'.");
     }
 
     params = [alumno, fechaRef];
-    const result = await coneccionDB.query(sql, params);
-    const prom = result.rows[0].prom;
-    return prom !== null ? prom : 1.00;
+
+    const result = await coneccionDB.query(sql, params); // ✅ params incluido
+
+    // console.log(sql, result.rows[0]);
+
+    const prom = result.rows[0].promedio; // ✅ alias correcto
+
+    // ✅ Formato dos decimales; si es null retorna 1.00
+    return prom !== null ? parseFloat(parseFloat(prom).toFixed(2)) : 1.00;
 
   } catch (error) {
     console.error("Error en calcularPromedio:", error);
     throw error;
   }
 }
+
 
 /**
  * Retorna el año de ingreso a la propuesta para la persona indicada.
@@ -665,7 +684,7 @@ export const processInfo_One = async (req, res) => {
     } else {
       result = await infoOne(tipoO);
     }
-    console.log(result);
+    //console.log(result);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.toString() });
@@ -893,7 +912,7 @@ async function verMatAnioReg(alumno, plan, fecha) {
 
 
 ///calcular anio de cursada
-
+//////endpoint para calcular el año de cursada según la propuesta y los años de materias aprobadas
 
 
 export const aniocursada19 = async (req, res) => {
@@ -907,7 +926,7 @@ export const aniocursada19 = async (req, res) => {
     const sqlSelect = `
       SELECT alumno, propuesta, aniounoap, aniodosap, aniotresap, aniocuatroap, aniocincoap
       FROM fce_per.alumnos_info
-      WHERE plan IN (12,13,14,17) 
+      WHERE plan IN (12, 13, 14, 17, 18, 19, 20, 24) 
       ${whereext}
     `;
     const result = await coneccionDB.query(sqlSelect);
@@ -953,7 +972,7 @@ export const aniocursada19 = async (req, res) => {
   }
 }
 
-///////
+/////// calcula anio de cursada según la propuesta y los años de materias aprobadas
 async function calcularAnio19(car, uno, dos, tres, cuatro, alumno) {
   try {
     const carInt = parseInt(car, 10);
@@ -1235,8 +1254,11 @@ export const calculoVelocidad = async (req, res) => {
 
       let idealExamen = await traerExamenideal(nrobimestres, row.propuesta, row.plan_version);
       let idealCursadas = await traerRegularideal(nrobimestres, row.propuesta, row.plan_version);
-
-      //console.log(nrobimestres,idealExamen, idealCursadas, row.propuesta, row.plan_version,aprobadas, regulares);
+      if(row.alumno === 41649){
+        console.log(nrobimestres,idealExamen, idealCursadas, row.propuesta, row.plan_version,aprobadas, regulares);
+      }
+      
+      
       let calculotiempo;
       if (aprobadas > 0 && nrobimestres > 0 || regulares > 0 && nrobimestres > 0) {
         if (aprobadas > 0 && regulares > 0) {
@@ -1261,6 +1283,9 @@ export const calculoVelocidad = async (req, res) => {
         }
       } else {
         calculotiempo = 100
+      }
+      if(row.alumno === 41649){
+        console.log(`Alumno: ${row.alumno} | Aprobadas: ${aprobadas} | Regulares: ${regulares} | Ideal Examen: ${idealExamen} | Ideal Cursadas: ${idealCursadas} | Cálculo Tiempo: ${calculotiempo}`);
       }
 
       const sqlu = `
@@ -1643,3 +1668,61 @@ async function infoOneparcial(tp) {
 }
 
 
+
+//get equivalencias alumno
+
+export const getEquivalenciasAlumno = async (req, res) => {
+  const { alumnoId } = req.params;
+
+  // 1. Traés las materias aprobadas
+  const materiasResult = await coneccionDB.query(
+    `
+    SELECT 
+            vha.elemento,
+           vha.actividad_codigo::int AS actividad_codigo,
+            vha.actividad_nombre,
+            vha.fecha,  
+            vha.nota
+        FROM negocio.vw_hist_academica vha 
+        WHERE vha.alumno = $1 
+          AND vha.resultado = 'A';
+    `
+   ,
+    [alumnoId]
+  );
+
+  const materiasAprobadas = materiasResult.rows.map(
+    r => r.actividad_codigo
+   
+  );
+  console.log( materiasAprobadas);
+if (materiasAprobadas.length === 0) { return res.json({ alumnoId, materias_aprobadas: [], equivalencias: [] }) }
+  // 2. Evaluás equivalencias pasando el array
+  const { rows } = await coneccionDB.query(
+    `
+    SELECT *
+    FROM (
+      SELECT
+        r.codigo_destino,
+        r.asignatura_destino,
+        r.tipo_equivalencia,
+        r.total_requeridas,
+        CARDINALITY(
+            ARRAY(
+                SELECT unnest(r.codigos_origen)::int  
+                INTERSECT
+                SELECT unnest($1::int[])
+            )
+        ) AS total_cumplidas
+      FROM fce_per.vw_reglas_equivalencia r
+    )
+    `,
+    [materiasAprobadas]
+  );
+
+  res.json({
+    alumnoId,
+    materias_aprobadas: materiasAprobadas,
+    equivalencias: rows
+  });
+};

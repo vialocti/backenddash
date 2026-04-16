@@ -16,7 +16,8 @@ import session from 'express-session'
 import utilesRoutes from './routes/utilesRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
 import logRoutes from './routes/logRoutes.js'
-
+import faqRoutes from './routes/faqRoutes.js'
+import padronesRoutes from './routes/padronesRoutes.js'
 //
 
 dotenv.config()
@@ -50,6 +51,8 @@ app.use('/aluinfo', alumnosInfoRoutes)
 app.use('/datosanalisis', opeanaiRoutes)
 app.use('/admin', adminRoutes)
 app.use('/log', logRoutes)
+app.use('/faq', faqRoutes)
+app.use('/padrones', padronesRoutes)
 //
 
 export default app

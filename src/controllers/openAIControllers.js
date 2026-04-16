@@ -364,11 +364,12 @@ export const getAnalizador_datos_R = async (req, res) => {
   try {
     const client = openai;
     const { consulta } = req.body;
+    //console.log(consulta)
 
     if (!consulta) {
       return res.status(400).json({ error: "Query no enviada" });
     }
-
+    // console.log(consulta)
     // ✅ Convertimos el objeto a texto legible para el modelo
     const queryText = consulta;
 
@@ -378,16 +379,32 @@ export const getAnalizador_datos_R = async (req, res) => {
         {
           role: "system",
           content: `
-            Eres un analizador de los nuevos planes de estudios y de responder las dudas que se le
-            puedan presentar a los alumnos sobre los nuevos planes de estudio de 2026 
-           deberas responder **solo** con base en la información contenida en los documentos del sistema.
-            tus respuestas deben ser concisas, directas al punto y no mayor a 50 palabras.
-            
-            Si no encuentras información relacionada, responde exactamente:
-            
-            "No hay información al respecto sobre ese tema. Puede ser que todavía no se ha procesado información del tema."
-            
-            Mantén un tono empático, claro y profesional.
+           Eres un analizador de los planes de estudio 2026.
+         Eres un asistente académico especializado en equivalencias de planes de estudio.
+Tu única fuente de verdad es la información recuperada desde los documentos de equivalencias vectorizados.
+
+Tarea principal:
+Determinar qué actividades del Plan 2026 se otorgan como equivalencia,
+indicando claramente por qué actividad del plan de origen se concede.
+
+Reglas obligatorias:
+- Responde SOLO con información presente en los documentos.
+- NO inventes materias, códigos ni reglas.
+- NO hagas suposiciones ni inferencias fuera del texto.
+- Si una equivalencia es parcial, indícalo explícitamente y menciona el requisito.
+- Si no existe equivalencia, indícalo explícitamente.
+
+Formato de respuesta:
+- Menciona primero la actividad del Plan 2026.
+- Luego indica la actividad o actividades del plan de origen que otorgan la equivalencia.
+- Usa frases breves y claras.
+- No superes las 50 palabras.
+
+Si no existe información relacionada, responde EXACTAMENTE:
+"No hay información al respecto sobre ese tema. Puede ser que todavía no se ha procesado información del tema."
+
+Tono:
+Empático, claro y profesional.
           `,
         },
         {
@@ -399,9 +416,70 @@ export const getAnalizador_datos_R = async (req, res) => {
         {
           type: "file_search",
           vector_store_ids: [
-            process.env.VECTOR_STORE_ID_RES2,
-            process.env.VECTOR_STORE_ID_RES1,
+            process.env.VECTOR_STORE_ID_EQUI,
+
           ],
+        },
+      ],
+    });
+    
+    const textoRespuesta =
+      response.output_text || "No se obtuvo una respuesta del asistente.";
+    //console.log("Respuesta del asistente:", textoRespuesta);
+      res.json({ respuesta: textoRespuesta });
+
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Error al procesar la solicitud" });
+  }
+};
+//////bbb
+
+
+
+
+
+
+export const handlePromptResponse = async (req, res) => {
+  try {
+    const client = openai;
+    const { consulta } = req.body;
+    console.log(consulta)
+    if (!consulta) {
+      return res.status(400).json({ error: "Query no enviada" });
+    }
+
+    // ✅ Convertimos el objeto a texto legible para el modelo
+    const queryText = Array.isArray(consulta) ? consulta.join(", ") : consulta;
+    console.log(queryText)
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content: `
+           Eres un analizador de los planes de estudio 2026.
+            Responde únicamente con base en la información recuperada del sistema.
+          Las respuestas deben ser concisas, claras y no superar las 50 palabras.
+          Si no existe información relacionada, responde exactamente:
+          "No hay información al respecto sobre ese tema. Puede ser que todavía no se ha procesado información del tema."
+
+          Mantén un tono empático, claro y profesional.
+          No inventes información ni hagas suposiciones.
+          debes dar las materias equivalentes del plan 26 a que materia se
+          otorga
+
+          `,
+        },
+        {
+          role: "user",
+          content: consulta, // 👈 ahora es texto legible
+        },
+      ],
+      tools: [
+        {
+          type: "file_search",
+          vector_store_ids: ["vs_693ac43f41ac819184676d7a057f9e85"],
         },
       ],
     });
@@ -414,32 +492,7 @@ export const getAnalizador_datos_R = async (req, res) => {
     console.error("Error:", error);
     res.status(500).json({ error: "Error al procesar la solicitud" });
   }
-};
-//////bbb
 
-export const handlePromptResponse = async (req, res) => {
-  try {
-    // 1. Obtener el texto del cuerpo de la petición (ej: { consulta: "..." })
-    const { consulta } = req.body;
-    console.log(consulta)
-    const client = openai;
-
-    // 2. Pasar ese texto al campo 'input' de la API
-    const response = await client.responses.create({
-      prompt: {
-        id: "pmpt_693996cbe98881959e50226957bdd48808921b1aa16c0169",
-        version: "7"
-      },
-      // AQUÍ VA EL TEXTO DEL BODY:
-      input: consulta
-
-    });
-
-    res.status(200).json(response.output_text);
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 };
 
 ////////
@@ -601,3 +654,93 @@ export const generateInformeIA_actividades_historicas = async (req, res) => {
     res.status(500).set('Content-Type', 'text/plain').send(error.message);
   }
 };
+
+
+
+
+
+/**
+ * Envía los datos crudos al orquestador para que el Agente Clasificador
+ * realice su trabajo según las reglas de negocio (LA, CP, LE).
+ */
+export const ejecutarEquivalencias = async (req, res) => {
+  try {
+    const { origen, destino, materias } = req.body;
+
+    // 1. Validación básica de presencia de datos
+    if (!origen || !destino || !Array.isArray(materias)) {
+      return res.status(400).json({
+        error: "Se requieren 'origen', 'destino' y el array 'materias'."
+      });
+    }
+
+    // 2. Empaquetado para 'input_as_text'
+    // Creamos un objeto que coincida exactamente con lo que el agente clasificador busca
+    const payloadParaAgente = {
+      carrera_origen: origen,
+      carrera_destino: destino,
+      mat_aprobadas: materias
+    };
+
+    // 3. Llamada al Orquestador
+    const run = await openai.responses.create({
+      model: "gpt-4o-mini",
+      // Convertimos el objeto a string para que entre como 'input_as_text'
+      input: JSON.stringify(payloadParaAgente),
+      metadata: {
+        workflow_id: "wf_6928720e2b588190ba6a260e0c0d307b058620db2344363a"
+      },
+    });
+
+    const resultado = run.output_text || run.choices?.[0]?.message?.content;
+    console.log(resultado)
+    if (!resultado) {
+      return res.status(500).json({ error: "El flujo de agentes no devolvió respuesta." });
+    }
+
+    return res.status(200).send(resultado);
+
+  } catch (error) {
+    console.error("Error en el punto de entrada del workflow:", error);
+    return res.status(500).json({
+      error: "Error en la comunicación con el agente clasificador.",
+      details: error.message
+    });
+  }
+};
+
+
+
+///
+
+
+/**
+ * GET /api/faqs
+ * Query params opcionales:
+ *  - plan=plan_2019 | plan_2026 | plan_1998
+ *  - categoria=cambio_de_plan | equivalencias | general
+ */
+export const getFaqs = async (req, res) => {
+  const { plan, categoria } = req.query;
+
+  let resultado = faqs;
+
+  if (plan) {
+    resultado = resultado.filter(faq =>
+      faq.aplica_a.includes(plan) || faq.aplica_a.includes("todos")
+    );
+  }
+
+  if (categoria) {
+    resultado = resultado.filter(
+      faq => faq.categoria === categoria
+    );
+  }
+
+  res.json({
+    total: resultado.length,
+    data: resultado
+  });
+};
+
+

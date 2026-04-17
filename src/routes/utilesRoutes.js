@@ -1,4 +1,4 @@
-import { buscarMesasSinCerrar, calculoIndicesTotales, deleteTablesIndices, generarReporteAprobadasAnioUno, grabarMateriasAprobadasCiclo, grabardatosCursadas, indicescomisionessede, obtenerDatosreporteAlumnosMat, reportAlumnosCoeficienteOptimo, reportAlumnosCoeficienteOptimoCoef, setearAniocursadaActividad, traerReporteActividades } from '../controllers/utilesControllers.js'
+import { buscarMesasSinCerrar, calculoIndicesTotales, consultaIndices_actividad, consultaIndices_total_anio, deleteTablesIndices, generarReporteAprobadasAnioUno, grabarMateriasAprobadasCiclo, grabardatosCursadas, indicescomisionessede, obtenerDatosreporteAlumnosMat, reportAlumnosCoeficienteOptimo, reportAlumnosCoeficienteOptimoCoef, setearAniocursadaActividad, traerReporteActividades, truncateInfoAlumnos } from '../controllers/utilesControllers.js'
 
 import { Router } from 'express'
 
@@ -19,4 +19,8 @@ utilesRoutes.get('/mesas_abiertas', buscarMesasSinCerrar)
 
 //complementos
 utilesRoutes.get('/complemento_anio_cur', setearAniocursadaActividad)
+utilesRoutes.get('/truncate_datos_info', truncateInfoAlumnos)
+
+utilesRoutes.get('/consultar_datos_indice_actividad/:anio/:sede/:propuesta', consultaIndices_actividad)
+utilesRoutes.get('/consultar_datos_indice_total/:anio/:sede/:propuesta', consultaIndices_total_anio )
 export default utilesRoutes

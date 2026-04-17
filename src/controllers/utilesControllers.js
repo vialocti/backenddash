@@ -7,10 +7,10 @@ const rows = await axios.get(`${uri}/comisionesnumero/${anio}/${nmateria}`)getCo
         //console.log(ncomisiones)
         const rows = await axios.get(`${uri}/detalleporcomisiones/${anio}/${ncomisiones}/${codsede}`)
 */
-
+import dotenv from 'dotenv'
 import coneccionDB from '../database.js'
 import { convertirDatosNew } from './cursadasControllers.js'
-
+dotenv.config()
 //const coneccionDB = require('../database.js');
 //const { convertirDatos } = require('./cursadasControllers.js');
 
@@ -1697,3 +1697,106 @@ export const setearAniocursadaActividad = async (req, res) => {
 }
 
   
+
+
+// aluinfo controller truncatear tabla de info alumnos
+
+export const truncateInfoAlumnos = async (req, res) => {
+  const query = `TRUNCATE fce_per.alumnos_info`;
+ 
+  try {
+   if(process.env.HABILITADO_TRUNCATE_DATOS_ALUINFO==='false'){
+      return res.status(403).json({ error: 'Truncate de alumnos_info no habilitado' });
+    }
+    await coneccionDB.query(query);
+    res.send({ message: 'Tabla alumnos_info truncada correctamente' });
+  } catch (error) {
+    console.error('Error al truncar la tabla alumnos_info:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+
+//consultas indices
+
+export const consultaIndices_actividad = async (req, res) => {
+  const { anio, sede, propuesta } = req.params;
+
+  // Convertimos a número para comparar correctamente
+  const anioNum = Number(anio);
+  const sedeNum = Number(sede);
+  const propuestaNum = Number(propuesta);
+
+  const condiciones = [];
+  const valores = [];
+  let idx = 1;
+
+  if (anioNum !== 0) {
+    condiciones.push(`anio_academico = $${idx++}`);
+    valores.push(anioNum);
+  }
+  if (sedeNum !== 0) {
+    condiciones.push(`sede = $${idx++}`);
+    valores.push(sedeNum);
+  }
+  if (propuestaNum !== 0) {
+    condiciones.push(`propuesta = $${idx++}`);
+    valores.push(propuestaNum);
+  }
+
+  const whereClause = condiciones.length
+    ? `WHERE ${condiciones.join(' AND ')}`
+    : '';
+
+  const query = `SELECT * FROM fce_per.dash_actividad_resultados ${whereClause}`;
+
+  try {
+    const result = await coneccionDB.query(query, valores);
+    res.send(result.rows);
+  } catch (error) {
+    console.error('Error en consultaIndices:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+
+//indices totales
+export const consultaIndices_total_anio = async (req, res) => {
+  const { anio, sede, propuesta } = req.params;
+
+  // Convertimos a número para comparar correctamente
+  const anioNum = Number(anio);
+  const sedeNum = Number(sede);
+  const propuestaNum = Number(propuesta);
+
+  const condiciones = [];
+  const valores = [];
+  let idx = 1;
+
+  if (anioNum !== 0) {
+    condiciones.push(`anio_academico = $${idx++}`);
+    valores.push(anioNum);
+  }
+  if (sedeNum !== 0) {
+    condiciones.push(`sede = $${idx++}`);
+    valores.push(sedeNum);
+  }
+  if (propuestaNum !== 0) {
+    condiciones.push(`propuesta = $${idx++}`);
+    valores.push(propuestaNum);
+  }
+
+  const whereClause = condiciones.length
+    ? `WHERE ${condiciones.join(' AND ')}`
+    : '';
+
+  const query = `SELECT * FROM fce_per.dash_indices_total ${whereClause}`;
+
+  try {
+    const result = await coneccionDB.query(query, valores);
+    res.send(result.rows);
+  } catch (error) {
+    console.error('Error en consultaIndices:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};

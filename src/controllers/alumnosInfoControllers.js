@@ -600,6 +600,8 @@ async function anioIngreso(per, pro) {
  */
 async function setearAnioING(leg) {
   try {
+
+    if (leg===0){return 2026}
     const sql = `
       SELECT min(aspi.anio_academico) AS ingrefac
       FROM negocio.sga_alumnos AS alu
@@ -1232,8 +1234,8 @@ export const aniocursada98 = async (req, res) => {
 export const calculoVelocidad = async (req, res) => {
 
   const { anio, epoca, tipoO } = req.params
-  let whereext = tipoO === 'P' ? " WHERE  coef_tcarrera is null OR coef_tcarrera='NaN' "
-    : ""
+  let whereext = tipoO === 'P' ? " WHERE  calidad = 'A' AND (coef_tcarrera is null OR coef_tcarrera='NaN') "
+    : "WHERE  calidad = 'A' "
 
   const sqlstr = `
     SELECT alumno, anio_ingreso_pro, propuesta, plan, plan_version, aprobadas, regularesap 
@@ -1256,8 +1258,8 @@ export const calculoVelocidad = async (req, res) => {
       let aprobadas = row.aprobadas;
       let regulares = row.regularesap;
 
-      let idealExamen = await traerExamenideal(nrobimestres, row.propuesta, row.plan_version);
-      let idealCursadas = await traerRegularideal(nrobimestres, row.propuesta, row.plan_version);
+      let idealExamen = await traerExamenideal(nrobimestres, row.propuesta, row.plan);
+      let idealCursadas = await traerRegularideal(nrobimestres, row.propuesta, row.plan);
    
    //   if(row.alumno === 41649){
    //     console.log(nrobimestres,idealExamen, idealCursadas, row.propuesta, row.plan_version,aprobadas, regulares);
@@ -1312,7 +1314,7 @@ export const calculoVelocidad = async (req, res) => {
 }
 
 
-async function traerExamenideal(bimestre, propuesta, planversion) {
+async function traerExamenideal(bimestre, propuesta, plan) {
 
   //console.log(bimestre, propuesta,planversion)
 
@@ -1321,18 +1323,18 @@ async function traerExamenideal(bimestre, propuesta, planversion) {
            tres1b, tres2b, tres3b, tres4b, cuatro1b, cuatro2b, cuatro3b, cuatro4b, 
            cinco1b, cinco2b, cinco3b, cinco4b 
     FROM fce_per.examen_plan_trayecto 
-    WHERE cod_propuesta = $1 AND plan_version = $2
+    WHERE cod_propuesta = $1 AND plan = $2 limit 1
   `;
 
 
   try {
-
-    const result = await coneccionDB.query(sqlstr, [propuesta, planversion]);
+      if (plan===24){plan=17}
+    const result = await coneccionDB.query(sqlstr, [propuesta, plan]);
     const row = result.rows[0];
 
     if (!row) return 0;
 
-    let cantidad = [75, 79, 57, 80].includes(planversion) ? 16 : 20;
+    let cantidad = [11,17,24,18,19,20].includes(plan) ? 16 : 20;
     let codigo = cantidad === 16 ? 1 : 2;
 
     let arrayExamen = Object.values(row);
@@ -1348,24 +1350,24 @@ async function traerExamenideal(bimestre, propuesta, planversion) {
 
 
 //
-async function traerRegularideal(bimestre, propuesta, planversion) {
+async function traerRegularideal(bimestre, propuesta, plan) {
   const sqlstr = `
     SELECT uno1b, uno2b, uno3b, uno4b, dos1b,dos2b, dos3b, dos4b, 
            tres1b, tres2b, tres3b, tres4b, cuatro1b, cuatro2b, cuatro3b, cuatro4b, 
            cinco1b, cinco2b, cinco3b, cinco4b 
     FROM fce_per.regular_plan_trayecto 
-    WHERE cod_propuesta = $1 AND plan_version = $2
+    WHERE cod_propuesta = $1 AND plan = $2 limit 1
   `;
 
 
   try {
-
-    const result = await coneccionDB.query(sqlstr, [propuesta, planversion]);
+    if (plan===24){plan=17}
+    const result = await coneccionDB.query(sqlstr, [propuesta, plan]);
     const row = result.rows[0];
 
     if (!row) return 0;
 
-    let cantidad = [75, 79, 57, 80].includes(planversion) ? 16 : 20;
+    let cantidad = [11,17,24,18,19,20].includes(plan) ? 16 : 20;
     let codigo = cantidad === 16 ? 1 : 2;
 
     let arrayExamen = Object.values(row);
@@ -1479,17 +1481,23 @@ export const controlPorcentaje = async (req, res) => {
 
         if (plan == 6) {
           matplanproT = 37
-        } else {
+        } else if (plan == 18){
+          matplanproT = 30
+        }
+        else {
           matplanproT = 46
         }
       }
 
-      if (propuesta === 3) {
+          if (propuesta === 3) {
 
-        if (plan === 7) {
+            if (plan === 7) {
 
-          matplanproT = 36
-        } else {
+              matplanproT = 36
+            } else if(plan===19){
+              matplanproT = 32
+            }
+            else{
 
           matplanproT = 42
         }
@@ -1500,8 +1508,12 @@ export const controlPorcentaje = async (req, res) => {
       }
 
       if (propuesta === 8) {
+         if(plan === 20){
+          matplanproT = 32
+         }else{
         matplanproT = 46
-      }
+         }
+              }
 
       if (propuesta === 6) {
         matplanproT = 19

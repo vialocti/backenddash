@@ -26,7 +26,7 @@ export const getEgresadoSedeCarreraAnio = async (req, res) => {
      CASE sa.propuesta WHEN 1 THEN 'CPN' WHEN 8 THEN 'CP' WHEN 2 THEN 'LA' WHEN 3 THEN 'LE' WHEN 6 THEN 'LNRG' WHEN 7 THEN 'LLO' END as carrera,
     count(sa.propuesta) as canti,avg(promedio) as pro,avg(promedio_sin_aplazos) as prosa  from negocio.sga_certificados_otorg sco `
     let sql_I = " inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno"
-    let sql_w = ` where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}'  and certificado  in (3,4,5,6,7,9)`
+    let sql_w = ` where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}'  and sco.certificado  in (3,4,5,6,7,9,16,17,25,26) `
     let sql_g = " group by sa.ubicacion ,sa.propuesta order by sa.ubicacion,sa.propuesta"
 
 
@@ -67,7 +67,7 @@ export const getListadoEgreSedeCarreraAnio = async (req, res) => {
     from negocio.sga_certificados_otorg sco
     inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
     inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-    where sa.ubicacion=${sede} and sa.propuesta=${car} and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' `
+    where sa.ubicacion=${sede} and sco.certificado  in (3,4,5,6,7,9,16,17,25,26) and sa.propuesta=${car} and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' `
 
 
 
@@ -113,7 +113,7 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
     count(sa.propuesta) from negocio.sga_certificados_otorg sco
     inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
     inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-    where sa.ubicacion in (${ubicacion}) and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
+    where sa.ubicacion in (${ubicacion}) and certificado  in (3,4,5,6,7,9, 16, 17, 25, 26) and sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' 
     group by sa.propuesta
     `
     //console.log(sql)
@@ -134,129 +134,169 @@ export const getCantidadEgreSedeCarreraAnio = async (req, res) => {
 
 //cantidad por sedes
 export const getCantidadEgreSedesAnio = async (req, res) => {
+  const { anio, lapso } = req.params;
 
-    const { anio, lapso } = req.params
-    let anioE = anio
-    //console.log(anio)
-    if (parseInt(anio) === 0) {
-        anioE = new Date().getFullYear()
-        let fecha = new Date()
-        if (fecha < new Date(`${anioE}-04-01`)) {
-            anioE = anioE - 1
-        }
+  // --- 1. Resolver año efectivo ---
+  let anioE = Number(anio);
+  if (!Number.isInteger(anioE)) {
+    return res.status(400).json({ error: 'Año inválido' });
+  }
+
+  if (anioE === 0) {
+    // Si no se especifica año, usar el año académico actual:
+    // antes del 1 de abril seguimos en el período del año anterior
+    const hoy = new Date();
+    anioE = hoy.getFullYear();
+    if (hoy < new Date(`${anioE}-04-01`)) {
+      anioE = anioE - 1;
     }
+  } else if (anioE < 1900 || anioE > 2999) {
+    return res.status(400).json({ error: 'Año fuera de rango' });
+  }
 
-    let fecha_i = ''
-    let fecha_f = ''
-    let aniot = Number(anioE) + 1
+  // --- 2. Resolver rango de fechas ---
+  const rangos = {
+    C: [`${anioE}-01-01`, `${anioE + 1}-01-01`],
+    L: [`${anioE}-04-01`, `${anioE + 1}-04-01`],
+  };
 
-    if (lapso === 'C') {
+  if (!rangos[lapso]) {
+    return res.status(400).json({ error: 'Lapso inválido (usar C o L)' });
+  }
 
-        fecha_i = `${anioE}-01-01`
-        fecha_f = `${aniot}-01-01`
+  const [fecha_i, fecha_f] = rangos[lapso];
 
-    } else if (lapso === 'L') {
+  // --- 3. Query parametrizada ---
+  const CERTIFICADOS = [3, 4, 5, 6, 7, 9, 16, 17, 25, 26];
 
-        fecha_i = `${anioE}-04-01`
-        fecha_f = `${aniot}-04-01`
+  const sql = `
+    SELECT
+      CASE sa.ubicacion
+        WHEN 1 THEN 'MZA'  WHEN 2 THEN 'SRF'
+        WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE'
+      END AS sede,
+      COUNT(sa.ubicacion) AS cantidad
+    FROM negocio.sga_certificados_otorg sco
+    INNER JOIN negocio.sga_alumnos  sa ON sa.alumno  = sco.alumno
+    INNER JOIN negocio.mdp_personas mp ON mp.persona = sco.persona
+    WHERE sco.anulado = 0
+      AND sco.fecha_egreso >= $1::date
+      AND sco.fecha_egreso <  $2::date
+      AND sco.certificado = ANY($3::int[])
+    GROUP BY sa.ubicacion
+    ORDER BY sa.ubicacion
+  `;
 
-    }
-
-    //console.log(fecha_i)
-    //console.log(fecha_f)
-
-    let sql = `select CASE sa.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
-    count(sa.ubicacion)
-        from negocio.sga_certificados_otorg sco
-        inner join negocio.sga_alumnos sa on sa.alumno=sco.alumno
-        inner join negocio.mdp_personas mp on mp.persona=sco.persona 
-        where sco.anulado=0 and sco.fecha_egreso >='${fecha_i}' and sco.fecha_egreso <'${fecha_f}' and certificado  in (3,4,5,6,7,9)
-        group by sa.ubicacion
-    `
-
-
-    try {
-        //  let sql = `${sql_1} ${sql_I} ${sql_w} ${sql_g}`
-        // console.log(sql)
-        const resu = await coneccionDB.query(sql)
-        res.send(resu.rows)
-    } catch (error) {
-        console.log(error)
-    }
-
-}
+  try {
+    await coneccionDB.query('SET search_path = negocio');
+    const resu = await coneccionDB.query(sql, [fecha_i, fecha_f, CERTIFICADOS]);
+    return res.send(resu.rows);
+  } catch (error) {
+    console.error('getCantidadEgreSedesAnio:', error);
+    return res.status(500).json({ error: 'Error al obtener conteo por sede' });
+  }
+};
 
 
 export const getEgresadosPromedios = async (req, res) => {
-    // console.log('aaa')
-    const { anio, car, lapso, ficola, ffcola } = req.params
+  const { anio, car, lapso, ficola, ffcola } = req.params;
 
-    let fecha_i = ''
-    let fecha_f = ''
-    let aniot = Number(anio) + 1
-    let anioic = Number(anio) - 1
+  // --- 1. Resolver rango de fechas ---
+  let fecha_i, fecha_f;
 
-    if (ficola === '0' || ffcola === '0') {
-        if (lapso === 'C') {
-
-            fecha_i = `${anio}-01-01`
-            fecha_f = `${aniot}-01-01`
-
-        } else if (lapso === 'L') {
-
-            fecha_i = `${anio}-04-01`
-            fecha_f = `${aniot}-04-01`
-
-        } else if (lapso === 'E') {
-            fecha_i = `${anioic}-09-30`
-            fecha_f = `${anio}-10-01`
-        }
-
-
-
-    } else {
-        fecha_i = ficola
-        fecha_f = ffcola
-
+  if (ficola !== '0' && ffcola !== '0') {
+    // Validar formato YYYY-MM-DD antes de confiar en el input
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(ficola) || !dateRegex.test(ffcola)) {
+      return res.status(400).json({ error: 'Formato de fecha inválido (YYYY-MM-DD)' });
     }
-    let car_q = ''
-    if (car === 'T') {
-        car_q = '3,4,5,6,7,9'
-    } else {
-        car_q = car
+    fecha_i = ficola;
+    fecha_f = ffcola;
+  } else {
+    const anioNum = Number(anio);
+    if (!Number.isInteger(anioNum) || anioNum < 1900 || anioNum > 2999) {
+      return res.status(400).json({ error: 'Año inválido' });
     }
 
+    const rangos = {
+      C: [`${anioNum}-01-01`,     `${anioNum + 1}-01-01`],
+      L: [`${anioNum}-04-01`,     `${anioNum + 1}-04-01`],
+      E: [`${anioNum - 1}-09-30`, `${anioNum}-10-01`],
+    };
 
-    let sql = `select alu.legajo,CONCAT(per.apellido,', ',per.nombres) as nameC,cer.persona,alu.alumno,
-    CASE alu.ubicacion WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF' WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE' END as sede,
-        case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta,
-    round(promedio,2) as promedio,round(promedio_sin_aplazos,2) as promesa,to_char(fecha_egreso,'dd-mm-yyyy') as fecha_egreso,
-    (select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)) as anio 
-   ,(select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)) as aniop
-   , round((fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,1)),'-04-01')) as DATE))/365.0, 2) as tiempo
-   , round((fecha_egreso - cast( (concat((select *  from negocio.get_anio_academico_ingreso_alumno(cer.alumno,2)),'-04-01')) as DATE))/365.0, 2) as tiempop
-
-   from negocio.sga_certificados_otorg cer 
-   inner join negocio.mdp_personas per on per.persona=cer.persona
-   inner join negocio.sga_alumnos alu on alu.alumno=cer.alumno
-  where cer.anulado=0 and fecha_egreso >'${fecha_i}' and fecha_egreso <'${fecha_f}' and certificado in (${car_q})
-  order by certificado,nameC,fecha_egreso
-`
-
-
-
-
-
-    try {
-        const wer = await coneccionDB.query('set search_path=negocio')
-        const resp = await coneccionDB.query(sql)
-        
-        res.send(resp.rows)
-    } catch (error) {
-        console.log(error)
+    if (!rangos[lapso]) {
+      return res.status(400).json({ error: 'Lapso inválido (usar C, L o E)' });
     }
+    [fecha_i, fecha_f] = rangos[lapso];
+  }
 
-}
+  // --- 2. Resolver certificados (whitelist) ---
+  const VALID_CERTS = [3, 4, 5, 6, 7, 9, 16, 17, 25, 26];
+
+  let certIds;
+  if (car === 'T') {
+    certIds = VALID_CERTS;
+  } else {
+    certIds = String(car)
+      .split(',')
+      .map(s => Number(s.trim()))
+      .filter(n => VALID_CERTS.includes(n));
+
+    if (certIds.length === 0) {
+      return res.status(400).json({ error: 'Certificado(s) inválido(s)' });
+    }
+  }
+
+  // --- 3. Query parametrizada ---
+  const sql = `
+    SELECT
+      alu.legajo,
+      CONCAT(per.apellido, ', ', per.nombres) AS "nameC",
+      cer.persona,
+      alu.alumno,
+      CASE alu.ubicacion
+        WHEN 1 THEN 'MZA' WHEN 2 THEN 'SRF'
+        WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE'
+      END AS sede,
+      CASE certificado
+        WHEN 3 THEN 'CPN' WHEN 4 THEN 'LA'
+        WHEN 5 THEN 'LE'  WHEN 6 THEN 'LNRG'
+        WHEN 7 THEN 'LLO' WHEN 9 THEN 'CP'
+      END AS propuesta,
+      ROUND(promedio, 2) AS promedio,
+      ROUND(promedio_sin_aplazos, 2) AS promesa,
+      TO_CHAR(fecha_egreso, 'dd-mm-yyyy') AS fecha_egreso,
+      negocio.get_anio_academico_ingreso_alumno(cer.alumno, 1) AS anio,
+      negocio.get_anio_academico_ingreso_alumno(cer.alumno, 2) AS aniop,
+      ROUND(
+        (fecha_egreso - make_date(
+          negocio.get_anio_academico_ingreso_alumno(cer.alumno, 1)::int, 4, 1
+        ))::numeric / 365.0, 2
+      ) AS tiempo,
+      ROUND(
+        (fecha_egreso - make_date(
+          negocio.get_anio_academico_ingreso_alumno(cer.alumno, 2)::int, 4, 1
+        ))::numeric / 365.0, 2
+      ) AS tiempop
+    FROM negocio.sga_certificados_otorg cer
+    INNER JOIN negocio.mdp_personas per ON per.persona = cer.persona
+    INNER JOIN negocio.sga_alumnos   alu ON alu.alumno  = cer.alumno
+    WHERE cer.anulado = 0
+      AND fecha_egreso >= $1::date
+      AND fecha_egreso < $2::date
+      AND certificado = ANY($3::int[])
+    ORDER BY certificado, "nameC", fecha_egreso
+  `;
+
+  try {
+    await coneccionDB.query('SET search_path = negocio');
+    const resp = await coneccionDB.query(sql, [fecha_i, fecha_f, certIds]);
+    return res.send(resp.rows);
+  } catch (error) {
+    console.error('getEgresadosPromedios:', error);
+    return res.status(500).json({ error: 'Error al obtener egresados' });
+  }
+};
 
 
 
@@ -286,7 +326,7 @@ const cantidadEgrAnioPropuestas = async (anio, lapso) => {
     let sqlstr = `select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta, count(certificado)
     , sexo from negocio.sga_certificados_otorg cert
     inner join negocio.mdp_personas mp on mp.persona=cert.persona
-    where cert.anulado=0 and fecha_egreso >='${fecha_i}' and fecha_egreso<='${fecha_f}' and certificado in(3,4,5,6,7,9)
+    where cert.anulado=0 and fecha_egreso >='${fecha_i}' and fecha_egreso<'${fecha_f}' and sco.certificado in (3,4,5,6,7,9,16,17,25,26)
     group by certificado,sexo
     `
 
@@ -376,7 +416,7 @@ export const obtenerCertificadosPorAnio = async (req, res) => {
             const query = `
           SELECT COUNT(*) AS cantidad
           FROM negocio.sga_certificados_otorg sco
-          WHERE certificado IN (3,4,5,6,7,9,16)
+          WHERE certificado IN (3,4,5,6,7,9,16,17,25,26)
             AND sco.anulado = 0
             AND fecha_egreso >= $1
             AND fecha_egreso <= $2

@@ -18,6 +18,7 @@ import adminRoutes from './routes/adminRoutes.js'
 import logRoutes from './routes/logRoutes.js'
 import faqRoutes from './routes/faqRoutes.js'
 import padronesRoutes from './routes/padronesRoutes.js'
+import processosRoutes from './routes/procesosRoutes.js'
 //
 
 dotenv.config()
@@ -53,6 +54,7 @@ app.use('/admin', adminRoutes)
 app.use('/log', logRoutes)
 app.use('/faq', faqRoutes)
 app.use('/padrones', padronesRoutes)
+app.use('/procesos', processosRoutes)
 //
 
 export default app

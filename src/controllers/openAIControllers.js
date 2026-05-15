@@ -297,7 +297,7 @@ export const askAssistant = async (req, res) => {
   }
 };
 
-
+/*
 export const askAssistant_R = async (req, res) => {
 
 
@@ -358,7 +358,142 @@ export const askAssistant_R = async (req, res) => {
 };
 
 
+*/
 
+///
+
+export const askAssistant_R = async (req, res) => {
+  try {
+    const client = openai;
+    const { query } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: "Query no enviada" });
+    }
+   console.log(query)
+    // Catálogo de acciones que el asistente puede "ordenar"
+    const actionTools = [
+      {
+        type: "function",
+        name: "consultar_alumnos_activos",
+        description:
+          "Devolver el listado/cantidad de alumnos activos. Usar cuando el usuario pregunte cuántos o cuáles alumnos están activos.",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+      {
+        type: "function",
+        name: "consultar_alumnos_por_sede",
+        description:
+          "Devolver la cantidad de alumnos de una sede específica.",
+        parameters: {
+          type: "object",
+          properties: {
+            sede: { type: "string", description: "Nombre o id de la sede" },
+          },
+          required: ["sede"],
+        },
+      },
+      {
+        type: "function",
+        name: "consultar_egresados_anio",
+        description:
+          "Devolver la cantidad de egresados de un año lectivo. Si no se especifica año, usar el año en curso.",
+        parameters: {
+          type: "object",
+          properties: {
+            anio: { type: "integer", description: "Año lectivo" },
+          },
+          required: ["anio"],
+        },
+      },
+      {
+        type: "function",
+        name: "navegar_a",
+        description:
+          "Navegar a una sección del sistema cuando el usuario lo pida explícitamente ('llevame a…', 'abrí…').",
+        parameters: {
+          type: "object",
+          properties: {
+            ruta: {
+              type: "string",
+              enum: [
+                "/estudiantes-activos",
+                "/egresados",
+                "/sedes",
+                "/inscripciones",
+                // sumá las que tengas en tu router
+              ],
+            },
+          },
+          required: ["ruta"],
+        },
+      },
+    ];
+
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content: `
+Eres un asistente para un Sistema de Información Académica. Operás en DOS modos y elegís UNO según la intención del usuario:
+
+1) ACCIÓN / CONSULTA OPERATIVA: si el usuario pide datos concretos del sistema (ej: "cuántos alumnos están activos", "alumnos de la sede X", "cuántos egresados llevamos este año") o pedir abrir una sección, INVOCÁ la function correspondiente. NO respondas con texto.
+
+2) AYUDA / DOCUMENTACIÓN: si pregunta cómo usar el sistema, procedimientos, normativas o planes de estudio (recordá que los alumnos pueden ser plan 2019 o plan 98), usá file_search y respondé en menos de 50 palabras, tono empático, claro y profesional. Si no hay info, respondé exactamente: "No hay información al respecto sobre ese tema. Puede ser que todavía no se ha procesado información del tema."
+
+Nunca combines los dos modos en una misma respuesta.
+          `.trim(),
+        },
+        { role: "user", content: query },
+      ],
+      tools: [
+        {
+          type: "file_search",
+          vector_store_ids: [process.env.VECTOR_STORE_ID],
+        },
+        ...actionTools,
+      ],
+      tool_choice: "auto",
+    });
+
+    // ¿El modelo decidió invocar una de nuestras funciones?
+    const functionCall = response.output?.find(
+      (item) => item.type === "function_call"
+    );
+    console.log(functionCall);
+    if (functionCall) {
+      let parametros = {};
+      try {
+        parametros = JSON.parse(functionCall.arguments || "{}");
+      } catch (_) {}
+      console.log(`El asistente ordena ejecutar: ${functionCall.name} con parámetros:`, parametros);
+      return res.json({
+        tipo: "accion",
+        accion: functionCall.name,
+        parametros,
+      });
+    }
+
+    // Caso ayuda (file_search): devolver texto
+    const textoRespuesta =
+      response.output_text || "No se obtuvo una respuesta del asistente.";
+    console.log("Respuesta del asistente:", textoRespuesta);
+    return res.json({
+      tipo: "respuesta",
+      respuesta: textoRespuesta,
+    });
+  } catch (error) {
+    console.error("Error al procesar la solicitud:", error);
+    res.status(500).json({
+      error: "Error interno al procesar la solicitud de ayuda.",
+      detalle: error.message,
+    });
+  }
+};
+
+
+///
 
 export const getAnalizador_datos_R = async (req, res) => {
   try {

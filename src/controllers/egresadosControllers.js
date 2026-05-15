@@ -175,7 +175,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
         WHEN 1 THEN 'MZA'  WHEN 2 THEN 'SRF'
         WHEN 3 THEN 'GALV' WHEN 4 THEN 'ESTE'
       END AS sede,
-      COUNT(sa.ubicacion) AS cantidad
+      COUNT(sa.ubicacion) AS count
     FROM negocio.sga_certificados_otorg sco
     INNER JOIN negocio.sga_alumnos  sa ON sa.alumno  = sco.alumno
     INNER JOIN negocio.mdp_personas mp ON mp.persona = sco.persona
@@ -190,6 +190,7 @@ export const getCantidadEgreSedesAnio = async (req, res) => {
   try {
     await coneccionDB.query('SET search_path = negocio');
     const resu = await coneccionDB.query(sql, [fecha_i, fecha_f, CERTIFICADOS]);
+    
     return res.send(resu.rows);
   } catch (error) {
     console.error('getCantidadEgreSedesAnio:', error);
@@ -326,7 +327,7 @@ const cantidadEgrAnioPropuestas = async (anio, lapso) => {
     let sqlstr = `select case certificado when 3 then 'CPN' when 4 then 'LA' when 5 then 'LE' when 6 then 'LNRG' when 7 then 'LLO' when 9 then 'CP' end as propuesta, count(certificado)
     , sexo from negocio.sga_certificados_otorg cert
     inner join negocio.mdp_personas mp on mp.persona=cert.persona
-    where cert.anulado=0 and fecha_egreso >='${fecha_i}' and fecha_egreso<'${fecha_f}' and sco.certificado in (3,4,5,6,7,9,16,17,25,26)
+    where cert.anulado=0 and fecha_egreso >='${fecha_i}' and fecha_egreso<'${fecha_f}' and cert.certificado in (3,4,5,6,7,9,16,17,25,26)
     group by certificado,sexo
     `
 

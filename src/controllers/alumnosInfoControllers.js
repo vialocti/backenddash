@@ -1451,6 +1451,27 @@ export const controlCalidadAluinfo = async (req, res) => {
 };
 
 
+///////
+async function getPorcentajeAvancePropuesta(alumno, tipo = 'FINAL', flag = false) {
+  
+  try {
+    await coneccionDB.query('SET search_path TO negocio');
+
+    const result = await coneccionDB.query(
+      'SELECT porcentaje_avance FROM negocio.get_porcentaje_avance_propuesta($1, $2, $3)',
+      [alumno, tipo, flag]
+    );
+    //console.log(`Porcentaje de avance para alumno ${alumno}:`, result.rows[0]?.porcentaje_avance);
+    return result.rows[0]?.porcentaje_avance || 0; // Retorna el porcentaje o 0 si no se encuentra
+  } catch (err) {
+    console.error('Error al obtener porcentaje de avance:', err);
+    throw err;
+  } finally {
+    // Aquí podrías cerrar la conexión si es necesario, dependiendo de cómo manejes las conexiones en tu aplicación 
+  }
+}
+
+
 ////control de porcentaje de avance carrera
 export const controlPorcentaje = async (req, res) => {
   const { tipoO } = req.params
@@ -1468,70 +1489,16 @@ export const controlPorcentaje = async (req, res) => {
       
     FROM fce_per.alumnos_info ${whereext}`;
 
-  let matplanproT = 0;
+ // let matplanproT = 0;
   let completo = 0.0;
   try {
     const { rows } = await coneccionDB.query(sql);
     // console.log('Datos obtenidos de alumnos_info:', rows);
 
     for (const element of rows) {
-      const { alumno, aprobadas, propuesta, plan } = element;
+      const { alumno } = element;
 
-      if (propuesta == 2) {
-
-        if (plan == 6) {
-          matplanproT = 37
-        } else if (plan == 18){
-          matplanproT = 30
-        }
-        else {
-          matplanproT = 46
-        }
-      }
-
-          if (propuesta === 3) {
-
-            if (plan === 7) {
-
-              matplanproT = 36
-            } else if(plan===19){
-              matplanproT = 32
-            }
-            else{
-
-          matplanproT = 42
-        }
-      }
-
-      if (propuesta === 1) {
-        matplanproT = 37
-      }
-
-      if (propuesta === 8) {
-         if(plan === 20){
-          matplanproT = 32
-         }else{
-        matplanproT = 46
-         }
-              }
-
-      if (propuesta === 6) {
-        matplanproT = 19
-      }
-
-      if (propuesta == 7) {
-        if (plan === 11) {
-          matplanproT = 36
-        } else {
-          matplanproT = 40
-        }
-      }
-
-      if (aprobadas === 0) {
-        completo = 0
-      } else {
-        completo = Math.round((aprobadas / matplanproT) * 100)
-      }
+      completo = await getPorcentajeAvancePropuesta(alumno, 'FINAL', false);
 
 
       const updateSql = `
@@ -1552,9 +1519,33 @@ export const controlPorcentaje = async (req, res) => {
     res.status(500).json({ message: 'Error al procesar los datos' });
   }
 };
+/* luego remplazar
+export const controlPorcentaje = async (req, res) => {
+  const { tipoO } = req.params;
+  const whereExt = tipoO === 'P' ? 'WHERE completado IS NULL' : '';
 
+  const sql = `
+    UPDATE fce_per.alumnos_info ai
+    SET completado = COALESCE(
+      (SELECT porcentaje_avance 
+       FROM negocio.get_porcentaje_avance_propuesta(ai.alumno, 'FINAL', false)),
+      0
+    )
+    ${whereExt}
+  `;
 
-
+  try {
+    const result = await coneccionDB.query(sql);
+    res.status(200).json({ 
+      message: 'Proceso finalizado correctamente',
+      actualizados: result.rowCount 
+    });
+  } catch (error) {
+    console.error('Error durante el control de porcentaje:', error);
+    res.status(500).json({ message: 'Error al procesar los datos' });
+  }
+};
+*/
 //control de matricula
 
 const traerlegajo = async (alumno) => {
@@ -1743,3 +1734,112 @@ if (materiasAprobadas.length === 0) { return res.json({ alumnoId, materias_aprob
     equivalencias: rows
   });
 };
+
+
+///////
+/////////
+//tema padrones alumnos
+
+
+// Lista blanca: cada clave es el nombre del query param,
+// cada valor dice a qué campo SQL apunta y con qué operador compara.
+// Para sumar nuevos filtros, agregá una entrada acá.
+const FILTROS = {
+  // Igualdad exacta
+  legajo:           { campo: 'ap.legajo',            op: '=' },
+  ubicacion:        { campo: 'ai.ubicacion',         op: '=' },
+  propuesta:        { campo: 'ai.propuesta',         op: '=' },
+  plan:             { campo: 'spv.plan',             op: '=' },
+  plan_version:     { campo: 'ai.plan_version',      op: '=' },
+  anio_ingreso_pro: { campo: 'aif.anio_ingreso_pro', op: '=' },
+  aniocursada:      { campo: 'aif.aniocursada',      op: '=' },
+  // Rangos numéricos (mayor/menor o igual)
+  aprobadas_min:       { campo: 'aif.aprobadas',  op: '>=' },
+  aprobadas_max:       { campo: 'aif.aprobadas',  op: '<=' },
+  reprobadas_min:      { campo: 'aif.reprobadas', op: '>=' },
+  reprobadas_max:      { campo: 'aif.reprobadas', op: '<=' },
+  pro_con_aplazos_min: { campo: 'aif.promedioca', op: '>=' },
+  pro_con_aplazos_max: { campo: 'aif.promedioca', op: '<=' },
+  pro_sin_aplazos_min: { campo: 'aif.promediosa', op: '>=' },
+  pro_sin_aplazos_max: { campo: 'aif.promediosa', op: '<=' },
+  completado_min:      { campo: 'aif.completado', op: '>=' },
+  completado_max:      { campo: 'aif.completado', op: '<=' },
+
+  // Búsqueda parcial, case-insensitive
+  nombre: { campo: 'ap.nombres',     op: 'ILIKE' },
+  email:  { campo: 'mpc_mail.email', op: 'ILIKE' },
+};
+
+const SQL_BASE = `
+  SELECT DISTINCT 
+      ap.legajo, 
+      ap.nombres, 
+      ai.ubicacion, 
+      ai.propuesta,
+      spv.plan, 
+      ai.plan_version,
+      aif.aprobadas,
+      aif.reprobadas,
+      aif.anio_ingreso_pro,
+      aif.promedioca AS pro_con_aplazos,
+      aif.promediosa AS pro_sin_aplazos,
+      aif.aniocursada,
+      aif.completado,  
+      mpc_mail.email,
+      mpc_tel.telefono_numero
+  FROM fce_per.alumnos_padron ap
+  INNER JOIN negocio.sga_alumnos ai 
+      ON ap.legajo = ai.legajo
+  INNER JOIN negocio.sga_planes_versiones spv 
+      ON spv.plan_version = ai.plan_version
+ LEFT JOIN fce_per.alumnos_info aif
+      
+      ON aif.legajo::text= ai.legajo
+      AND aif.propuesta = ai.propuesta
+  LEFT JOIN negocio.mdp_personas_contactos mpc_mail 
+      ON mpc_mail.persona = ai.persona
+     AND mpc_mail.contacto_tipo = 'MP'
+  LEFT JOIN negocio.mdp_personas_contactos mpc_tel 
+      ON mpc_tel.persona = ai.persona
+     AND mpc_tel.contacto_tipo = 'C'
+  WHERE ai.legajo IS NOT NULL 
+    AND ai.calidad = 'A'
+`;
+
+export async function getAlumnosPadron(req, res) {
+  try {
+    const condiciones = [];
+    const valores = [];
+    let i = 1;
+
+    for (const [param, valor] of Object.entries(req.query)) {
+      if (!FILTROS[param]) continue;                 // ignora filtros no permitidos
+      if (valor === '' || valor == null) continue;   // ignora vacíos
+
+      const { campo, op } = FILTROS[param];
+
+      if (op === 'ILIKE') {
+        condiciones.push(`${campo} ILIKE $${i}`);
+        valores.push(`%${valor}%`);
+      } else {
+        condiciones.push(`${campo} ${op} $${i}`);
+        valores.push(valor);
+      }
+      i++;
+    }
+
+    let sql = SQL_BASE;
+    if (condiciones.length > 0) {
+      sql += ' AND ' + condiciones.join(' AND ');
+    }
+    sql += ' ORDER BY ap.nombres';
+
+    const { rows } = await  coneccionDB.query(sql, valores);
+    res.json({ total: rows.length, data: rows });
+
+  } catch (err) {
+    console.error('Error en getAlumnos:', err);
+    res.status(500).json({ error: 'Error al consultar alumnos' });
+  }
+}
+

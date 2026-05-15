@@ -294,28 +294,6 @@ export const getResultadosPorActa = async (req, res) => {
 }
 
 
-//si esta aprobado el alumno acta alumno comision
-/*
-export const getAprobadoActaAlumno = async (req, res) => {
-
-    const {idacta, alumno} = req.params
-    
-
-    let sqlstr = `select count(*) from negocio.sga_actas_detalle sad 
-    where id_acta =${idacta} and alumno=${alumno}
-    group by resultado
-`
-
-    try {
-                
-        const resu = await coneccionDB.query(sqlstr)
-        res.send(resu.rows)
-    } catch (error) {
-        console.log(error)
-    }
-
-}
-*/
 
 export const getAprobadoActaAlumno = async (req, res) => {
     const { idacta, alumno } = req.params;
@@ -347,7 +325,7 @@ export const getAprobadoActaAlumno = async (req, res) => {
 
 
 //cantidad de materias aprobadas por alumno en un año
-//
+//se anula
 const alumnost =async(anio,sede,propuesta)=>{
     
     const sqlstr = `
@@ -373,41 +351,7 @@ const alumnost =async(anio,sede,propuesta)=>{
     }
 }
 
-//HISTORICOS
-//grabar datos historicos aprobadas por alumno anio
 
-// original comentada
-/*
-const tratarHistoricosaprobadasAlumnosAnio=async(anio,sede,propuesta, tablavalores )=>{
-    
-  
-    let vh={
-        anio:anio,
-        sede:sede,
-        propuesta:propuesta,
-        apcero:tablavalores[0].cero,
-        apuna:tablavalores[0].una,
-        apdos:tablavalores[0].dos,
-        aptres:tablavalores[0].tres,
-        apcuatro:tablavalores[0].cuatro,
-        apcinco:tablavalores[0].cinco,
-        apseis:tablavalores[0].seis,
-        apsiete:tablavalores[0].siete,
-        apocho:tablavalores[0].ocho,
-        apnueve:tablavalores[0].nueve,
-
-    }
-    let sqlInsert=`
-        INSERT INTO fce_per.dash_aprobadas_anio (anio, sede, propuesta, ap_cero, ap_una, ap_dos, ap_tres,ap_cuatro, ap_cinco, ap_seis, ap_siete, ap_ocho, ap_nueve)
-        VALUES(${vh.anio}, ${vh.sede}, ${vh.propuesta},${vh.apcero},${vh.apuna},${vh.apdos},${vh.aptres},${vh.apcuatro},${vh.apcinco},${vh.apseis},${vh.apsiete},${vh.apocho},${vh.apnueve} )
-    `
-    //console.log(sqlInsert)
-    const resu = await coneccionDB.query(sqlInsert)
-    return resu
-
-}
-
-*/
 //
 //funciones auxiliares para historicos aprobadas por alumno anio
 //funcion check si existe el registro
@@ -529,27 +473,9 @@ const tratarHistoricosAprobadasAlumnosAnio = async (anio, sede, propuesta, tabla
 };
 
 
-/*
-const tratarQry=(alumnos)=>{
+///////
+//////////--------------------------/////////
 
-    let tabla=[]
-    let datos={
-        cero:0,
-        una:alumnos.filter(alumno => alumno.total_aprobadas==='1').length,
-        dos:alumnos.filter(alumno => alumno.total_aprobadas==='2').length,
-        tres:alumnos.filter(alumno => alumno.total_aprobadas==='3').length,
-        cuatro:alumnos.filter(alumno => alumno.total_aprobadas==='4').length,
-        cinco:alumnos.filter(alumno => alumno.total_aprobadas==='5').length,
-        seis:alumnos.filter(alumno => alumno.total_aprobadas==='6').length,
-        siete:alumnos.filter(alumno => alumno.total_aprobadas==='7').length,
-        ocho:alumnos.filter(alumno => alumno.total_aprobadas==='8').length,
-        nueve:alumnos.filter(alumno => parseInt(alumno.total_aprobadas)>8).length,
-
-    }
-    tabla.push(datos)
-    return tabla
-}
-*/
 
 const tratarQryOptimizado = (alumnos) => {
     // Inicialización del objeto de resultados con todos los contadores a cero.
@@ -586,8 +512,11 @@ const tratarQryOptimizado = (alumnos) => {
     // Envuelve el objeto 'datos' en un array, como lo hacía la función original.
     return [datos];
 };
-//primero solo los ingresantes de una carrera y sede ingresantes puros 
 
+///
+//primero solo los ingresantes de una carrera y sede ingresantes puros 
+////
+/*
 export const traerAprobadasPorAlumnoSedePropuestaAnio = async(req,res)=>{
     const {anio,sede,propuesta,tipoO}=req.params
 
@@ -647,6 +576,91 @@ try {
 
 
 }
+    */
+
+export const traerAprobadasPorAlumnoSedePropuestaAnio = async (req, res) => {
+  const { anio, sede, propuesta, tipoO } = req.params;
+
+  const sqlstr = `
+    WITH alumnos_validos AS (
+      SELECT sa.alumno
+      FROM negocio.sga_propuestas_aspira spa
+      INNER JOIN negocio.sga_alumnos sa
+        ON sa.persona = spa.persona
+       AND sa.propuesta = spa.propuesta
+      WHERE spa.anio_academico = $1
+        AND sa.ubicacion       = $2
+        AND spa.propuesta      = $3
+        AND spa.tipo_ingreso  <> 6
+        AND spa.situacion_asp IN (1, 2)
+        AND sa.legajo IS NOT NULL
+    ),
+    aprobadas_por_alumno AS (
+      SELECT av.alumno,
+             COUNT(vha.alumno) AS total_aprobadas
+      FROM alumnos_validos av
+      LEFT JOIN negocio.vw_hist_academica vha
+        ON vha.alumno         = av.alumno
+       AND vha.anio_academico = $1
+       AND vha.origen IN ('E', 'P')
+       AND vha.resultado = 'A'
+      GROUP BY av.alumno
+    )
+    SELECT
+      COUNT(*) FILTER (WHERE total_aprobadas = 0)::int AS cero,
+      COUNT(*) FILTER (WHERE total_aprobadas = 1)::int AS una,
+      COUNT(*) FILTER (WHERE total_aprobadas = 2)::int AS dos,
+      COUNT(*) FILTER (WHERE total_aprobadas = 3)::int AS tres,
+      COUNT(*) FILTER (WHERE total_aprobadas = 4)::int AS cuatro,
+      COUNT(*) FILTER (WHERE total_aprobadas = 5)::int AS cinco,
+      COUNT(*) FILTER (WHERE total_aprobadas = 6)::int AS seis,
+      COUNT(*) FILTER (WHERE total_aprobadas = 7)::int AS siete,
+      COUNT(*) FILTER (WHERE total_aprobadas = 8)::int AS ocho,
+      COUNT(*) FILTER (WHERE total_aprobadas = 9)::int AS nueve,
+      COUNT(*) FILTER (WHERE total_aprobadas >= 10)::int AS diez
+    FROM aprobadas_por_alumno;
+  `;
+
+  try {
+    const { rows } = await coneccionDB.query(sqlstr, [anio, sede, propuesta]);
+    const datos = rows[0]; // siempre hay 1 fila (con ceros si no hubo alumnos)
+
+    // Si no hubo ningún alumno válido, todos los buckets son 0
+    const totalAlumnos =
+      datos.cero + datos.una + datos.dos + datos.tres + datos.cuatro +
+      datos.cinco + datos.seis + datos.siete + datos.ocho + datos.nueve + datos.diez;
+
+    if (totalAlumnos === 0) {
+      return res.status(404).send({ message: 'No se encontraron registros.' });
+    }
+
+    const tablavalores = [datos];
+
+    switch (tipoO) {
+      case 'Q':
+        return res.send(tablavalores);
+
+      case 'R':
+        tablavalores[0].anio = anio;
+        tablavalores[0].sede = sede;
+        tablavalores[0].propuesta = propuesta;
+        return res.send(tablavalores);
+
+      case 'H': {
+        const resp = await tratarHistoricosAprobadasAlumnosAnio(
+          anio, sede, propuesta, tablavalores
+        );
+        return res.send(resp);
+      }
+
+      default:
+        return res.status(400).send({ message: 'tipoO inválido' });
+    }
+  } catch (error) {
+    console.error('Error en la consulta:', error);
+    res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
+  }
+};
 
 
 /////datos de examenes por actividad 
@@ -714,10 +728,78 @@ const tratarDatosActividadesExPro=(datosqry)=>{
 
     return datosReturn
 }
+///////
 
+
+    export const traerAprobadasAnioPropuesta = async (req, res) => {
+  const { anio, sede, propuesta } = req.params;
+
+  const sqlstr = `
+    WITH alumnos_validos AS (
+      SELECT sa.alumno
+      FROM negocio.sga_propuestas_aspira spa
+      INNER JOIN negocio.sga_alumnos sa
+        ON sa.persona = spa.persona
+       AND sa.propuesta = spa.propuesta
+      WHERE spa.anio_academico = $1
+        AND sa.ubicacion       = $2
+        AND spa.propuesta      = $3
+        AND spa.tipo_ingreso  <> 6
+        AND spa.situacion_asp IN (1, 2)
+        AND sa.legajo IS NOT NULL
+    ),
+    anio_cursada_materia AS (
+      SELECT DISTINCT ON (se.codigo)
+        se.codigo AS actividad_codigo,
+        pl.anio_de_cursada
+      FROM negocio.sga_elementos se
+      INNER JOIN negocio.sga_elementos_revision ser
+        ON ser.elemento = se.elemento
+      INNER JOIN negocio.sga_elementos_plan sep
+        ON sep.elemento_revision = ser.elemento_revision
+      INNER JOIN negocio.sga_elementos_plan pl
+        ON pl.elemento_revision = sep.elemento_revision
+      WHERE pl.anio_de_cursada IS NOT NULL
+       
+      ORDER BY se.codigo, pl.anio_de_cursada
+      
+        )
+    SELECT
+      vha.actividad_codigo,
+      vha.actividad_nombre AS actividad,
+      acm.anio_de_cursada,
+      COUNT(*) FILTER (WHERE vha.origen = 'P')::int AS promocionados,
+      COUNT(*) FILTER (WHERE vha.origen = 'E' AND vha.resultado = 'A')::int AS "aprobadosE",
+      COUNT(*) FILTER (WHERE vha.origen = 'E' AND vha.resultado = 'R')::int AS "reprobadosE",
+      COUNT(*) FILTER (WHERE vha.origen = 'E' AND vha.resultado = 'U')::int AS "ausentesE"
+    FROM negocio.vw_hist_academica vha
+    INNER JOIN alumnos_validos av ON av.alumno = vha.alumno
+    LEFT JOIN anio_cursada_materia acm
+      ON acm.actividad_codigo = vha.actividad_codigo
+    WHERE vha.anio_academico = $1
+    GROUP BY vha.actividad_codigo, vha.actividad_nombre, acm.anio_de_cursada
+    ORDER BY acm.anio_de_cursada NULLS LAST, vha.actividad_nombre;
+  `;
+
+  const client = await coneccionDB.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SET LOCAL search_path TO negocio, public");
+    const { rows } = await client.query(sqlstr, [anio, sede, propuesta]);
+    await client.query('COMMIT');
+    //console.log(rows);
+    res.send(rows);
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error en la consulta:', error);
+    res.status(500).send({ message: 'Ocurrió un error en el servidor.' });
+  } finally {
+    client.release();
+  }
+};
 //////
     
-export const traerAprobadasAnioPropuesta = async (req, res) => {
+export const traerEstadisticasAnioPropuesta = async (req, res) => {
     const { anio, sede, propuesta } = req.params;
 
     // Declaración segura de la consulta SQL con parámetros
